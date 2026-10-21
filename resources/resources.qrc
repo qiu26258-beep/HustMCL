@@ -1,0 +1,6 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/brand">
+        <file alias="xiaoke-campus.jpg">mockups/oil-ui/assets/xiaoke-campus.jpg</file>
+    </qresource>
+</RCC>
