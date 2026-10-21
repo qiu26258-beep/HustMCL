@@ -1,0 +1,34 @@
+{
+  "version": 5,
+  "cmakeMinimumRequired": {"major": 3, "minor": 24, "patch": 0},
+  "configurePresets": [
+    {
+      "name": "core-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"},
+      "cacheVariables": {"BUILD_TESTING": "ON", "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"}
+    },
+    {
+      "name": "core-debug",
+      "inherits": "core-base",
+      "displayName": "Core Debug (compiler from environment)",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug"}
+    },
+    {
+      "name": "core-release",
+      "inherits": "core-base",
+      "displayName": "Core Release (compiler from environment)",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "Release"}
+    }
+  ],
+  "buildPresets": [
+    {"name": "core-debug", "configurePreset": "core-debug"},
+    {"name": "core-release", "configurePreset": "core-release"}
+  ],
+  "testPresets": [
+    {"name": "core-debug", "configurePreset": "core-debug", "output": {"outputOnFailure": true}, "execution": {"noTestsAction": "error"}},
+    {"name": "core-release", "configurePreset": "core-release", "output": {"outputOnFailure": true}, "execution": {"noTestsAction": "error"}}
+  ]
+}

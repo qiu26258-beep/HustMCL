@@ -1,0 +1,13 @@
+# Keep the actual link graph narrow, including dependencies added after target creation.
+function(hustmcl_check_core_dependencies target)
+    foreach(property LINK_LIBRARIES INTERFACE_LINK_LIBRARIES)
+        get_target_property(dependencies ${target} ${property})
+        if(dependencies)
+            foreach(dependency IN LISTS dependencies)
+                if(NOT dependency STREQUAL "Qt6::Core")
+                    message(FATAL_ERROR "${target}: forbidden core dependency: ${dependency}")
+                endif()
+            endforeach()
+        endif()
+    endforeach()
+endfunction()
