@@ -69,11 +69,15 @@ $p.ExitCode
 
 可用场景：`home-ready`、`install-unknown`、`install-known`、`install-cancelling`、`install-cancelled`、`install-committing`、`install-failed`、`install-long-path`。`--native-screenshot` 通过 Windows QPA 抓取已显示窗口；`QT_QPA_PLATFORM=offscreen` 可做可重复的离屏截图。`--scale` 是 Qt 缩放提示，不是跨平台绝对 DPI；Windows 原生平台仍按系统缩放（本机 150%），离屏基础 1x / 1.5x / 2x 单独记录。
 
+## 本机可直接运行的演示
+
+已部署到 `out/HustMCL/hustmcl_desktop.exe`，同目录带 Qt / MinGW 运行依赖，无需修改系统 PATH。默认打开首页，导航可切换安装页；这是本机 Release 演示包，不是完整启动器或正式发行包。复现构建与部署见[构建与测试](docs/构建与测试.md)，独立验证见[前端验证记录](docs/frontend/验证记录.md)第 9 节。`out/` 产物不进入 Git。
+
 ## 演示边界
 
 - 首页主操作与安装页导航已接入演示；设置与日志页暂未实现，侧栏禁用并给出说明。
 - 安装页展示未知 / 已知总量、取消请求、取消确认、提交不可取消、失败重试和长路径；这些状态由 `src/app` 的演示控制器驱动，不是真实下载器。
 - 真实微软认证、版本目录、Java 获取、下载校验、游戏启动、发布包和干净系统验收仍未实现。
-- MSVC 安装尚未成功；本轮 Qt 构建使用 MinGW 13.1 + Qt 6.10.3。部署与 `windeployqt` 由后续集成批次完成。
+- MSVC 安装尚未成功；本轮 Qt 构建使用 MinGW 13.1 + Qt 6.10.3。Codex 已完成 Release 构建、`windeployqt` 本地部署及干净 PATH 的原生启动复验；这不等于干净系统或正式发行验收。
 
 全部前端工作交由 DSH 中的 DeepSeek 完成，Codex 负责核心、构建集成与验收。本项目许可证尚待确定；仓库中的参考链接不表示已经引入第三方源码或资源。华小科角色衍生图片的授权边界见[素材与背景设计](docs/frontend/华小科素材与背景设计.md)，项目代码许可不自动覆盖该图片。
