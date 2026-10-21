@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "project": "HustMCL · 首页方向探索",
+  "brief": "Windows 10/11 x64 的 C++20 + Qt Widgets 原版 Minecraft 启动器；面向新手；校园主题；优先可维护性、低资源与清楚的主操作。",
+  "round": "第二轮 · Oil UI 方向探索",
+  "lang": "zh",
+  "nativeViewport": "1120x720",
+  "candidates": [
+    {
+      "id": "01",
+      "name": "Campus Desk / 校园工作台",
+      "concept": "一张桌面先回答“我在用什么、是否准备好、下一步做什么”，而不是堆一组卡片。",
+      "typography": "微软雅黑 UI + Segoe UI；编号导航；数字等宽；无外部字体",
+      "palette": ["#F4F0E7", "#FFFCF6", "#23201C", "#8C1D2F", "#4F6B52"],
+      "traits": ["单一桌面承载状态", "编号文字导航", "原创校园线稿", "固定主操作条"],
+      "kind": "html",
+      "source": "a-campus-desk.html",
+      "interactive": true
+    },
+    {
+      "id": "02",
+      "name": "Launch Deck / 启动台",
+      "concept": "把“启动”提到第一屏中心，状态像仪表一样横向排开；没有侧栏，导航在顶部。",
+      "typography": "Bahnschrift + 微软雅黑 UI；大字号实例名；无外部字体",
+      "palette": ["#EFF3F4", "#17282C", "#B23A2E", "#1F5C5A", "#F7F3EA"],
+      "traits": ["顶部导航", "暗色启动带", "三列状态轨", "主操作在首屏"],
+      "kind": "html",
+      "source": "b-launch-deck.html",
+      "interactive": true
+    },
+    {
+      "id": "03",
+      "name": "Field Guide / 校园手册",
+      "concept": "像翻一页校园手册：纸面、细线、宋体标题和一幅教学楼的线稿。",
+      "typography": "SimSun 标题 + 微软雅黑 UI 正文 + Georgia 数字；无外部字体",
+      "palette": ["#ECEDDF", "#FCFCF2", "#26302A", "#A33A2B", "#2F4A3A"],
+      "traits": ["章节式窄导航", "纸面与细线", "宋体标题", "单页校样排版"],
+      "kind": "html",
+      "source": "c-field-guide.html",
+      "interactive": true
+    }
+  ]
+}

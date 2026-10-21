@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1120, initial-scale=1">
+<title>Launch Deck · 首页</title>
+<style>
+  :root{
+    --bg:#EFF3F4;
+    --surface:#FFFFFF;
+    --ink:#15252A;
+    --muted:#5E6E74;
+    --line:#D3DEE1;
+    --teal:#1F5C5A;
+    --teal-dark:#163F3E;
+    --red:#B23A2E;
+    --red-deep:#8E2A21;
+    --paper:#F7F3EA;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1120px;height:720px;overflow:hidden;background:var(--bg);color:var(--ink);
+    font-family:"Microsoft YaHei UI","Microsoft YaHei","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+  button,a{font:inherit}
+  .window{position:relative;width:1120px;height:720px;background:var(--bg)}
+  .titlebar{height:40px;display:flex;align-items:center;gap:10px;padding:0 16px;background:#E8EEF0;border-bottom:1px solid var(--line)}
+  .app-mark{width:16px;height:16px;border-radius:3px;background:var(--red);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center}
+  .app-name{font-size:12.5px;font-weight:600}
+  .app-name span{color:var(--muted);font-weight:400}
+  .title-spacer{flex:1}
+  .preview-chip{font-size:10.5px;color:var(--red);background:#F6E5E1;border-radius:4px;padding:4px 9px;white-space:nowrap}
+  .window-controls{display:flex;align-items:center;gap:18px;margin-left:8px}
+  .window-controls svg{stroke:var(--muted);fill:none;stroke-width:1.4;stroke-linecap:round}
+
+  .topbar{position:absolute;left:0;top:40px;width:1120px;height:64px;background:#F8FAFA;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 24px;gap:28px}
+  .brand{display:flex;align-items:center;gap:10px;width:190px;flex:none}
+  .brand-mark{width:28px;height:28px;border-radius:6px;background:var(--red);color:#fff;display:grid;place-items:center;font-size:14px;font-weight:700}
+  .brand-name{font-family:"Bahnschrift","Segoe UI","Microsoft YaHei UI",sans-serif;font-size:17px;font-weight:600;letter-spacing:.01em}
+  .brand-sub{font-size:10px;color:var(--muted);margin-top:1px}
+  .topnav{display:flex;align-items:stretch;height:64px;gap:28px;flex:1}
+  .topnav a{position:relative;display:flex;align-items:center;text-decoration:none;color:var(--muted);font-size:13.5px}
+  .topnav a:hover{color:var(--ink)}
+  .topnav a:focus-visible{outline:2px solid #1D5FA7;outline-offset:2px}
+  .topnav a.active{color:var(--ink);font-weight:700}
+  .topnav a.active::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--red)}
+  .account{display:flex;align-items:center;gap:9px;flex:none;padding-left:18px;border-left:1px solid var(--line)}
+  .avatar{width:28px;height:28px;border-radius:50%;background:#F6E5E1;color:var(--red);display:grid;place-items:center;font-size:12px;font-weight:700}
+  .account-name{font-size:12px;font-weight:600}
+  .account-state{font-size:10px;color:var(--muted);margin-top:1px}
+
+  main{position:absolute;left:64px;top:136px;width:992px;bottom:0}
+  .hero{position:relative;width:992px;height:264px;background:#17282C;border-radius:10px;overflow:hidden}
+  .hero-copy{position:absolute;left:40px;top:38px;width:540px;color:var(--paper)}
+  .hero-kicker{font-size:12px;letter-spacing:.08em;color:#AFC2C4}
+  .hero h1{margin:0 0 0;font-family:"Bahnschrift","Segoe UI","Microsoft YaHei UI",sans-serif;font-size:42px;line-height:1.08;font-weight:600;letter-spacing:-.02em}
+  .hero-meta{margin:9px 0 0;font-size:13px;color:#C9D5D5}
+  .hero-status{margin-top:18px;font-size:12px;color:#AFC2C4}
+  .hero-status b{color:#E7EFEC;font-weight:600}
+  .hero-actions{position:absolute;left:40px;bottom:32px;display:flex;align-items:center;gap:24px}
+  .primary{width:180px;height:52px;border:0;border-radius:5px;background:var(--red);color:#fff;font-size:16px;font-weight:700;letter-spacing:.02em;cursor:pointer}
+  .primary:hover{background:var(--red-deep)}
+  .primary:focus-visible{outline:2px solid #9DD3D0;outline-offset:3px}
+  .hero-link{font-size:12.5px;color:#C9D5D5;text-decoration:none;border-bottom:1px solid #63797C;padding-bottom:2px}
+  .hero-link:hover{color:#fff}
+
+  .gate{position:absolute;right:38px;top:24px;width:300px;height:216px;opacity:.95}
+
+  .status-rail{display:grid;grid-template-columns:1fr 1fr 1fr;width:992px;height:132px;margin-top:24px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+  .status-cell{padding:24px 28px;position:relative}
+  .status-cell + .status-cell{border-left:1px solid var(--line)}
+  .status-label{font-size:11.5px;letter-spacing:.06em;color:var(--muted)}
+  .status-value{margin-top:9px;font-size:20px;font-weight:600;line-height:1.2}
+  .status-note{margin-top:7px;font-size:11.5px;color:var(--muted)}
+  .status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--teal);margin-right:7px;vertical-align:2px}
+
+  .summary{display:flex;align-items:center;justify-content:space-between;width:992px;height:64px;margin-top:20px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .summary-left{display:flex;align-items:baseline;gap:22px}
+  .summary-title{font-size:13px;color:var(--muted)}
+  .summary-item{font-size:13px;color:var(--ink)}
+  .summary-item b{font-weight:600;font-variant-numeric:tabular-nums}
+  .summary-links{display:flex;gap:22px}
+  .summary-links a{font-size:12px;color:var(--teal);text-decoration:none}
+  .summary-links a:hover{color:var(--teal-dark);text-decoration:underline}
+
+  footer{position:absolute;left:0;bottom:22px;width:992px;display:flex;justify-content:space-between;font-size:10.5px;color:#5E6E74}
+  footer b{font-weight:400;color:var(--red)}
+</style>
+</head>
+<body>
+<div class="window">
+  <header class="titlebar">
+    <div class="app-mark">H</div>
+    <div class="app-name">HustMCL <span>· 首页</span></div>
+    <div class="title-spacer"></div>
+    <div class="preview-chip">设计预览 · 样例数据</div>
+    <div class="window-controls" aria-hidden="true">
+      <svg width="11" height="11" viewBox="0 0 11 11"><path d="M1 5.5h9"/></svg>
+      <svg width="11" height="11" viewBox="0 0 11 11"><rect x="1.2" y="1.2" width="8.6" height="8.6" rx="1"/></svg>
+      <svg width="11" height="11" viewBox="0 0 11 11"><path d="M1.5 1.5l8 8m0-8-8 8"/></svg>
+    </div>
+  </header>
+
+  <div class="topbar">
+    <div class="brand"><div class="brand-mark">H</div><div><div class="brand-name">HustMCL</div><div class="brand-sub">校园启动器</div></div></div>
+    <nav class="topnav" aria-label="主导航">
+      <a class="active" href="#" aria-current="page">首页</a>
+      <a href="#">安装游戏</a>
+      <a href="#">设置</a>
+      <a href="#">日志与错误</a>
+    </nav>
+    <div class="account"><div class="avatar">林</div><div><div class="account-name">林知远</div><div class="account-state">已连接</div></div></div>
+  </div>
+
+  <main>
+    <section class="hero" aria-label="当前实例">
+      <div class="hero-copy">
+        <h1>校园生存</h1>
+        <p class="hero-meta">Minecraft 1.21.4 · 原版生存</p>
+        <div class="hero-status"><b>账号、Java 与实例均已就绪</b> · 可以开始</div>
+      </div>
+      <div class="hero-actions">
+        <button class="primary" type="button">启动游戏</button>
+        <a class="hero-link" href="#">安装其他版本</a>
+      </div>
+      <svg class="gate" viewBox="0 0 300 216" role="img" aria-label="原创校园门廊几何插画">
+        <circle cx="236" cy="58" r="34" fill="#1F5C5A" opacity=".55"/>
+        <path d="M20 190h260" stroke="#4C6569" stroke-width="1"/>
+        <path d="M58 190V84h184v106" fill="none" stroke="#789094" stroke-width="1.2"/>
+        <path d="M58 84 150 34l92 50" fill="none" stroke="#789094" stroke-width="1.2"/>
+        <rect x="78" y="112" width="22" height="78" fill="#B23A2E"/>
+        <rect x="139" y="94" width="22" height="96" fill="#B23A2E"/>
+        <rect x="200" y="112" width="22" height="78" fill="#B23A2E"/>
+        <path d="M48 190h204" stroke="#B23A2E" stroke-width="2"/>
+        <path d="M20 190c34-24 62-24 96 0" fill="none" stroke="#4C6569"/>
+        <path d="M206 190c24-18 48-18 72 0" fill="none" stroke="#4C6569"/>
+        <circle cx="262" cy="150" r="12" fill="none" stroke="#789094"/>
+        <path d="M262 162v28" stroke="#789094"/>
+      </svg>
+    </section>
+
+    <section class="status-rail" aria-label="准备状态">
+      <div class="status-cell"><div class="status-label">账号</div><div class="status-value"><span class="status-dot"></span>林知远</div><div class="status-note">微软账号 · 已连接</div></div>
+      <div class="status-cell"><div class="status-label">Java 运行时</div><div class="status-value">x64 · 已就绪</div><div class="status-note">由应用选择，无需手动指定</div></div>
+      <div class="status-cell"><div class="status-label">游戏实例</div><div class="status-value">校园生存</div><div class="status-note">1.21.4 · 文件已校验</div></div>
+    </section>
+
+    <div class="summary">
+      <div class="summary-left">
+        <span class="summary-title">启动摘要</span>
+        <span class="summary-item">内存上限 <b>4096 MB</b></span>
+        <span class="summary-item">启动后 <b>关闭启动器</b></span>
+      </div>
+      <div class="summary-links"><a href="#">打开设置</a><a href="#">日志与错误</a></div>
+    </div>
+
+    <footer><div><b>设计预览</b> · 账号、实例与进度为样例数据，功能尚未接入。</div><div>Windows 系统标题栏</div></footer>
+  </main>
+</div>
+</body>
+</html>

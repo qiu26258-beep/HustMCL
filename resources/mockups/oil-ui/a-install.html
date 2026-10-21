@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1120, initial-scale=1">
+<title>Campus Desk · 安装游戏</title>
+<style>
+  :root{
+    --paper:#F4F0E7; --surface:#FFFCF6; --ink:#23201C; --muted:#6F675D; --line:#DED5C6;
+    --red:#8C1D2F; --red-deep:#6E1524; --red-soft:#F2E3DF; --moss:#4F6B52;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1120px;height:720px;overflow:hidden;background:var(--paper);color:var(--ink);
+    font-family:"Microsoft YaHei UI","Microsoft YaHei","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+  button,a{font:inherit}
+  .window{position:relative;width:1120px;height:720px;background:var(--paper)}
+  .titlebar{height:40px;display:flex;align-items:center;gap:10px;padding:0 16px;background:#EFE9DE;border-bottom:1px solid var(--line)}
+  .app-mark{width:16px;height:16px;border-radius:4px;background:var(--red);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center}
+  .app-name{font-size:12.5px;font-weight:600}
+  .app-name span{color:var(--muted);font-weight:400}
+  .title-spacer{flex:1}
+  .preview-chip{font-size:10.5px;color:var(--red);background:var(--red-soft);border-radius:10px;padding:4px 9px;white-space:nowrap}
+  .window-controls{display:flex;align-items:center;gap:18px;margin-left:8px}
+  .window-controls svg{display:block;stroke:var(--muted);stroke-width:1.4;fill:none;stroke-linecap:round}
+
+  .rail{position:absolute;left:0;top:40px;width:216px;height:680px;background:#FBF8F1;border-right:1px solid var(--line)}
+  .brand{position:absolute;left:24px;top:30px;display:flex;align-items:center;gap:10px}
+  .brand-mark{width:30px;height:30px;border-radius:8px;background:var(--red);color:#fff;font-size:15px;font-weight:700;display:grid;place-items:center}
+  .brand-name{font-size:17px;font-weight:700}
+  .brand-sub{font-size:10.5px;color:var(--muted);margin-top:2px}
+  .rail-rule{position:absolute;left:24px;right:24px;top:88px;height:1px;background:var(--line)}
+  .nav{position:absolute;left:16px;top:116px;width:184px}
+  .nav a{position:relative;display:flex;align-items:baseline;gap:14px;height:46px;padding:0 12px;text-decoration:none;color:var(--muted);border-radius:7px}
+  .nav a b{font-family:"Segoe UI",sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.08em;color:var(--muted);width:18px}
+  .nav a span{font-size:14px}
+  .nav a:hover{background:#F2ECE2;color:var(--ink)}
+  .nav a:focus-visible{outline:2px solid #1D5FA7;outline-offset:2px}
+  .nav a.active{background:var(--red-soft);color:var(--red);font-weight:700}
+  .nav a.active b{color:var(--red)}
+  .nav a.active::before{content:"";position:absolute;left:0;top:12px;width:3px;height:22px;border-radius:2px;background:var(--red)}
+  .account{position:absolute;left:24px;right:24px;top:540px;padding-top:18px;border-top:1px solid var(--line)}
+  .account-row{display:flex;align-items:center;gap:10px}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--red-soft);color:var(--red);display:grid;place-items:center;font-size:13px;font-weight:700}
+  .account-name{font-size:13px;font-weight:600}
+  .account-state{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);margin-top:3px}
+  .account-state i{width:6px;height:6px;border-radius:50%;background:var(--moss)}
+  .account-link{display:inline-block;margin-top:14px;font-size:11.5px;color:var(--muted);text-decoration:none}
+  .rail-foot{position:absolute;left:24px;bottom:18px;font-size:10.5px;color:var(--muted)}
+
+  main{position:absolute;left:216px;top:40px;width:904px;height:680px;padding:44px 32px 0}
+  .page-head{display:flex;align-items:flex-end;justify-content:space-between;height:84px}
+  .page-head h1{margin:0;font-size:30px;line-height:1.2;letter-spacing:-.02em;font-weight:600}
+  .page-head p{margin:9px 0 0;font-size:13px;color:var(--muted)}
+  .stage-count{font-size:12px;color:var(--muted);padding-bottom:3px}
+
+  .desk{position:absolute;left:32px;top:128px;width:840px;height:504px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 30px rgba(68,52,34,.05)}
+  .steps{position:absolute;left:32px;top:24px;width:330px;height:392px}
+  .section-label{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:8px}
+  .stage-list{position:relative}
+  .stage-line{position:absolute;left:13px;top:10px;bottom:8px;width:1px;background:#E8DFD1}
+  .stage{position:relative;display:flex;gap:14px;min-height:44px;padding:3px 0 9px 0}
+  .stage .dot{position:relative;z-index:1;width:27px;height:27px;border-radius:50%;background:var(--surface);display:grid;place-items:center;flex:none;border:1px solid var(--line);font-size:11px;color:var(--muted)}
+  .stage.done .dot{background:var(--red);border-color:var(--red);color:#fff}
+  .stage.current .dot{background:var(--red-soft);border:2px solid var(--red);color:var(--red);font-weight:700}
+  .stage .copy{padding-top:2px;min-width:0}
+  .stage .title{font-size:13.5px;font-weight:600;line-height:1.35}
+  .stage.future .title{color:#6F675D;font-weight:400}
+  .stage .sub{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5}
+  .stage.current .sub{color:var(--red-deep)}
+  .current-note{display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 10px;border:1px dashed #D8B9B2;border-radius:6px;background:#FDF7F4;font-size:12px;color:#5F4A43}
+  .current-note b{font-weight:600;color:var(--red)}
+  .steps-foot{position:absolute;left:0;bottom:0;font-size:11.5px;color:var(--muted)}
+
+  .desk-rule{position:absolute;left:390px;top:28px;width:1px;height:380px;background:var(--line)}
+  .details{position:absolute;left:422px;top:24px;width:386px;height:392px}
+  .details .eyebrow{font-size:11.5px;letter-spacing:.1em;color:var(--muted)}
+  .version-line{display:flex;align-items:center;gap:8px;margin-top:7px}
+  .version{font-size:26px;line-height:1.15;font-weight:600;letter-spacing:-.02em}
+  .badge{font-size:10px;line-height:20px;padding:0 9px;border-radius:10px;background:var(--red-soft);color:var(--red)}
+  .badge.green{background:#E8F1EC;color:#2F6B4F}
+  .version-meta{font-size:12px;color:var(--muted);margin-top:5px}
+  .detail-rule{height:1px;background:var(--line);margin:13px 0 11px}
+  .detail-label{font-size:11.5px;color:var(--muted);margin-top:10px}
+  .path{display:flex;align-items:center;height:34px;margin-top:5px;padding:0 10px;border:1px solid var(--line);border-radius:6px;background:#F8F4EC;font-size:10.5px;color:#4D463D;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .space{display:flex;justify-content:space-between;font-size:12px;margin-top:7px;color:var(--ink)}
+  .space span{color:var(--muted)}
+  .notes{font-size:13px;line-height:1.6;color:var(--muted);margin-top:7px}
+  .notes b{font-weight:600;color:var(--ink)}
+
+  .action-strip{position:absolute;left:0;top:424px;width:840px;height:80px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 32px;background:#FFFCF6;border-radius:0 0 14px 14px}
+  .action-title{font-size:15px;font-weight:600}
+  .action-note{font-size:12px;color:var(--muted);margin-top:4px}
+  .cancel{height:44px;padding:0 22px;border:1px solid #C7A2A9;border-radius:7px;background:#FFFCF6;color:var(--red);font-size:13px;font-weight:600;cursor:pointer}
+  .cancel:hover{background:#FDF3F0}
+  .cancel:focus-visible{outline:2px solid #1D5FA7;outline-offset:3px}
+  .page-foot{position:absolute;left:32px;bottom:18px;right:32px;display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted)}
+  .page-foot b{font-weight:400;color:var(--red)}
+</style>
+</head>
+<body>
+<div class="window">
+  <header class="titlebar">
+    <div class="app-mark">H</div>
+    <div class="app-name">HustMCL <span>· 安装游戏</span></div>
+    <div class="title-spacer"></div>
+    <div class="preview-chip">设计预览 · 样例数据</div>
+    <div class="window-controls" aria-hidden="true">
+      <svg width="11" height="11" viewBox="0 0 11 11"><path d="M1 5.5h9"/></svg>
+      <svg width="11" height="11" viewBox="0 0 11 11"><rect x="1.2" y="1.2" width="8.6" height="8.6" rx="1"/></svg>
+      <svg width="11" height="11" viewBox="0 0 11 11"><path d="M1.5 1.5l8 8m0-8-8 8"/></svg>
+    </div>
+  </header>
+
+  <aside class="rail">
+    <div class="brand"><div class="brand-mark">H</div><div><div class="brand-name">HustMCL</div><div class="brand-sub">校园启动器</div></div></div>
+    <div class="rail-rule"></div>
+    <nav class="nav" aria-label="主导航">
+      <a href="#"><b>01</b><span>首页</span></a>
+      <a class="active" href="#" aria-current="page"><b>02</b><span>安装游戏</span></a>
+      <a href="#"><b>03</b><span>设置</span></a>
+      <a href="#"><b>04</b><span>日志与错误</span></a>
+    </nav>
+    <div class="account">
+      <div class="account-row"><div class="avatar">林</div><div><div class="account-name">林知远</div><div class="account-state"><i></i>已连接</div></div></div>
+      <a class="account-link" href="#">账号与授权 →</a>
+    </div>
+    <div class="rail-foot">HustMCL 0.1 · 设计预览</div>
+  </aside>
+
+  <main>
+    <div class="page-head">
+      <div><h1>安装游戏</h1><p>为校园生存准备 Minecraft 1.21.4</p></div>
+      <div class="stage-count">阶段 4 / 6</div>
+    </div>
+
+    <section class="desk" aria-label="安装任务">
+      <div class="steps">
+        <div class="section-label">安装步骤</div>
+        <div class="stage-list">
+          <div class="stage-line"></div>
+          <div class="stage done"><span class="dot">✓</span><div class="copy"><div class="title">未安装</div><div class="sub">目标目录为空</div></div></div>
+          <div class="stage done"><span class="dot">✓</span><div class="copy"><div class="title">解析版本</div><div class="sub">文件清单已确认</div></div></div>
+          <div class="stage done"><span class="dot">✓</span><div class="copy"><div class="title">准备环境</div><div class="sub">Java 运行时已就绪</div></div></div>
+          <div class="stage current"><span class="dot">4</span><div class="copy"><div class="title">下载文件</div><div class="sub">正在下载游戏资源</div>
+            <div class="current-note"><span>总量未知</span><b>已传输 128.4 MB</b></div>
+          </div></div>
+          <div class="stage future"><span class="dot">5</span><div class="copy"><div class="title">校验文件</div><div class="sub">下载完成后自动开始</div></div></div>
+          <div class="stage future"><span class="dot">6</span><div class="copy"><div class="title">就绪</div><div class="sub">完成后可启动游戏</div></div></div>
+        </div>
+      </div>
+
+      <div class="desk-rule"></div>
+
+      <aside class="details" aria-label="安装信息">
+        <div class="eyebrow">本次安装</div>
+        <div class="version-line"><span class="version">1.21.4</span><span class="badge">推荐</span><span class="badge green">已验证</span></div>
+        <div class="version-meta">正式版 · 原版生存</div>
+        <div class="detail-rule"></div>
+        <div class="detail-label">安装目录</div>
+        <div class="path">D:\HustMCL\instances\campus-demo</div>
+        <div class="notes">安装中不可更改目录。</div>
+        <div class="detail-label">空间</div>
+        <div class="space"><span>预计需要</span><b>1.2 GB</b></div>
+        <div class="space"><span>当前可用</span><b>86.5 GB</b></div>
+        <div class="detail-rule"></div>
+        <div class="detail-label">取消与恢复</div>
+        <div class="notes">取消后等待应用确认，保留已校验文件，不删除存档。再次安装会从检查缓存开始。</div>
+        <div class="detail-label">完成后</div>
+        <div class="notes">安装就绪不等于已进入游戏主菜单；启动状态会单独显示。</div>
+      </aside>
+
+      <footer class="action-strip">
+        <div><div class="action-title">安装进行中</div><div class="action-note">下载文件 · 总量未知 · 已传输 128.4 MB</div></div>
+        <button class="cancel" type="button">取消安装</button>
+      </footer>
+    </section>
+
+    <footer class="page-foot"><div><b>设计预览</b> · 版本、目录、进度为样例数据，功能尚未接入。</div><div>Windows 系统标题栏</div></footer>
+  </main>
+</div>
+</body>
+</html>
