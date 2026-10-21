@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="720" viewBox="0 0 1120 720" role="img" aria-labelledby="installTitle installDesc" font-family="'Microsoft YaHei UI','Microsoft YaHei','Segoe UI',sans-serif" text-rendering="geometricPrecision">
+  <title id="installTitle">HustMCL 安装游戏界面设计预览</title>
+  <desc id="installDesc">静态设计稿：校园主题安装页，展示设计示例版本、安装目录、下载阶段与取消入口。总量未知时不显示虚构百分比，功能尚未接入。</desc>
+
+  <!-- 窗口底色与系统标题栏示意 -->
+  <rect x="0" y="0" width="1120" height="720" fill="#F4F6F8"/>
+  <g id="titlebar">
+    <rect x="0" y="0" width="1120" height="40" fill="#F7F8FA"/>
+    <rect x="0" y="39" width="1120" height="1" fill="#D8DEE5"/>
+    <rect x="16" y="12" width="16" height="16" rx="4" fill="#8C1D2F"/>
+    <text x="24" y="23.5" text-anchor="middle" font-size="10" font-weight="700" fill="#FFFFFF">H</text>
+    <text x="40" y="25" font-size="12.5" font-weight="600" fill="#1E252B">HustMCL</text>
+    <text x="94" y="25" font-size="11.5" fill="#5B6670">· 安装游戏</text>
+    <g stroke="#5B6670" stroke-width="1.4" stroke-linecap="round">
+      <line x1="1052" y1="20" x2="1062" y2="20"/>
+      <rect x="1076" y="15" width="10" height="10" rx="1" fill="none"/>
+      <line x1="1100" y1="15" x2="1110" y2="25"/>
+      <line x1="1110" y1="15" x2="1100" y2="25"/>
+    </g>
+  </g>
+
+  <!-- 侧栏：安装游戏为当前页 -->
+  <g id="sidebar">
+    <rect x="0" y="40" width="232" height="680" fill="#FFFFFF"/>
+    <rect x="231" y="40" width="1" height="680" fill="#D8DEE5"/>
+    <rect x="24" y="64" width="28" height="28" rx="8" fill="#8C1D2F"/>
+    <text x="38" y="83" text-anchor="middle" font-size="15" font-weight="700" fill="#FFFFFF">H</text>
+    <text x="62" y="80" font-size="17" font-weight="700" fill="#1E252B">HustMCL</text>
+    <text x="62" y="97" font-size="10.5" fill="#5B6670">校园主题启动器</text>
+    <rect x="24" y="116" width="184" height="1" fill="#EDF0F3"/>
+
+    <g id="nav-home">
+      <g transform="translate(33 144)" fill="none" stroke="#5B6670" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9.5 10 3.5l7 6V17a1 1 0 0 1-1 1h-4v-5H8v5H4a1 1 0 0 1-1-1z"/>
+      </g>
+      <text x="64" y="159" font-size="14" fill="#3C4650">首页</text>
+    </g>
+
+    <g id="nav-install">
+      <rect x="16" y="184" width="200" height="44" rx="8" fill="#F6E7EA"/>
+      <rect x="16" y="194" width="3" height="24" rx="1.5" fill="#8C1D2F"/>
+      <g transform="translate(33 196)" fill="none" stroke="#8C1D2F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 3v9m0 0 3.5-3.5M10 12 6.5 8.5M4 15.5v1A1.5 1.5 0 0 0 5.5 18h9a1.5 1.5 0 0 0 1.5-1.5v-1"/>
+      </g>
+      <text x="64" y="211" font-size="14" font-weight="700" fill="#8C1D2F">安装游戏</text>
+    </g>
+
+    <g id="nav-settings">
+      <g transform="translate(33 248)" fill="none" stroke="#5B6670" stroke-width="1.6" stroke-linecap="round">
+        <line x1="3" y1="6" x2="17" y2="6"/>
+        <line x1="3" y1="14" x2="17" y2="14"/>
+        <circle cx="8" cy="6" r="2.4" fill="#FFFFFF"/>
+        <circle cx="13" cy="14" r="2.4" fill="#FFFFFF"/>
+      </g>
+      <text x="64" y="263" font-size="14" fill="#3C4650">设置</text>
+    </g>
+
+    <g id="nav-logs">
+      <g transform="translate(33 300)" fill="none" stroke="#5B6670" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="3" width="12" height="15" rx="2"/>
+        <line x1="7" y1="7" x2="13" y2="7"/>
+        <line x1="7" y1="10" x2="13" y2="10"/>
+        <line x1="7" y1="13" x2="11" y2="13"/>
+      </g>
+      <text x="64" y="315" font-size="14" fill="#3C4650">日志与错误</text>
+    </g>
+
+    <g id="keyboard-tip">
+      <rect x="24" y="548" width="184" height="108" rx="10" fill="#F7F8FA" stroke="#E3E7EC"/>
+      <text x="40" y="574" font-size="12" font-weight="600" fill="#1E252B">键盘提示</text>
+      <text x="40" y="596" font-size="11" fill="#5B6670">Tab 切换焦点</text>
+      <text x="40" y="616" font-size="11" fill="#5B6670">Enter 执行主操作</text>
+      <text x="40" y="636" font-size="11" fill="#5B6670">Esc 关闭弹层</text>
+    </g>
+    <text x="24" y="700" font-size="10.5" fill="#7A838D">HustMCL 0.1 · 界面设计预览</text>
+  </g>
+
+  <!-- 页面标题 -->
+  <g id="page-header">
+    <text x="264" y="88" font-size="20" font-weight="600" fill="#1E252B">安装游戏</text>
+    <text x="264" y="110" font-size="12.5" fill="#5B6670">确认版本与目录，安装过程只显示应用层给出的阶段与进度。</text>
+  </g>
+
+  <!-- 安装状态卡：阶段轨、未知总量、取消入口 -->
+  <g id="install-progress-card">
+    <rect x="264" y="124" width="824" height="164" rx="12" fill="#FFFFFF" stroke="#D8DEE5"/>
+    <text x="288" y="154" font-size="18" font-weight="600" fill="#1E252B">安装进行中</text>
+    <text x="288" y="176" font-size="12.5" fill="#5B6670">阶段 4 / 6 · 下载游戏文件</text>
+
+    <rect x="936" y="144" width="128" height="40" rx="8" fill="#FFFFFF" stroke="#C7A2A9"/>
+    <text x="1000" y="169" text-anchor="middle" font-size="13.5" fill="#8C1D2F">取消安装</text>
+    <text x="1064" y="202" text-anchor="end" font-size="10.5" fill="#7A838D">取消后保留已校验文件</text>
+
+    <g id="stage-rail">
+      <line x1="314" y1="204" x2="418" y2="204" stroke="#8C1D2F" stroke-width="2"/>
+      <line x1="438" y1="204" x2="542" y2="204" stroke="#8C1D2F" stroke-width="2"/>
+      <line x1="562" y1="204" x2="666" y2="204" stroke="#8C1D2F" stroke-width="2"/>
+      <line x1="686" y1="204" x2="790" y2="204" stroke="#D8DEE5" stroke-width="2"/>
+      <line x1="810" y1="204" x2="914" y2="204" stroke="#D8DEE5" stroke-width="2"/>
+
+      <circle cx="304" cy="204" r="6" fill="#8C1D2F"/>
+      <path d="M301.5 204.2 303.3 206 306.6 202.4" fill="none" stroke="#FFFFFF" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="428" cy="204" r="6" fill="#8C1D2F"/>
+      <path d="M425.5 204.2 427.3 206 430.6 202.4" fill="none" stroke="#FFFFFF" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="552" cy="204" r="6" fill="#8C1D2F"/>
+      <path d="M549.5 204.2 551.3 206 554.6 202.4" fill="none" stroke="#FFFFFF" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <circle cx="676" cy="204" r="9" fill="#F6E7EA"/>
+      <circle cx="676" cy="204" r="5.5" fill="#FFFFFF" stroke="#8C1D2F" stroke-width="2"/>
+      <circle cx="676" cy="204" r="2.6" fill="#8C1D2F"/>
+
+      <circle cx="800" cy="204" r="5" fill="#FFFFFF" stroke="#B9C2CC" stroke-width="1.5"/>
+      <circle cx="924" cy="204" r="5" fill="#FFFFFF" stroke="#B9C2CC" stroke-width="1.5"/>
+
+      <text x="304" y="222" text-anchor="middle" font-size="11" fill="#5B6670">未安装</text>
+      <text x="428" y="222" text-anchor="middle" font-size="11" fill="#5B6670">解析</text>
+      <text x="552" y="222" text-anchor="middle" font-size="11" fill="#5B6670">环境准备</text>
+      <text x="676" y="222" text-anchor="middle" font-size="11" font-weight="600" fill="#8C1D2F">下载</text>
+      <text x="800" y="222" text-anchor="middle" font-size="11" fill="#7A838D">校验</text>
+      <text x="924" y="222" text-anchor="middle" font-size="11" fill="#7A838D">就绪</text>
+    </g>
+
+    <rect x="288" y="236" width="620" height="30" rx="6" fill="#F7F8FA" stroke="#C9D0D8" stroke-dasharray="5 4"/>
+    <text x="302" y="256" font-size="11" font-weight="600" fill="#8C1D2F">总量未知</text>
+    <text x="374" y="256" font-size="11" fill="#5B6670">已传输 128.4 MB（设计示例）</text>
+    <text x="288" y="282" font-size="10.5" fill="#7A838D">文件总量未知；此处只显示已传输大小，不估算百分比。</text>
+  </g>
+
+  <!-- 版本选择 -->
+  <g id="version-card">
+    <rect x="264" y="304" width="520" height="232" rx="10" fill="#FFFFFF" stroke="#D8DEE5"/>
+    <text x="288" y="332" font-size="16" font-weight="600" fill="#1E252B">选择版本</text>
+    <text x="760" y="332" text-anchor="end" font-size="10" fill="#7A838D">推荐与已验证版本优先</text>
+
+    <rect x="280" y="342" width="488" height="64" rx="8" fill="#FDF8F9" stroke="#8C1D2F" stroke-width="1.2"/>
+    <circle cx="304" cy="374" r="8" fill="#FFFFFF" stroke="#8C1D2F" stroke-width="2"/>
+    <circle cx="304" cy="374" r="4" fill="#8C1D2F"/>
+    <text x="322" y="370" font-size="16" font-weight="600" fill="#1E252B">1.21.4</text>
+    <rect x="388" y="356" width="44" height="20" rx="10" fill="#F6E7EA"/>
+    <text x="410" y="370" text-anchor="middle" font-size="10" fill="#8C1D2F">推荐</text>
+    <rect x="438" y="356" width="56" height="20" rx="10" fill="#E8F1EC"/>
+    <text x="466" y="370" text-anchor="middle" font-size="10" fill="#2F6B4F">已验证</text>
+    <text x="322" y="390" font-size="11" fill="#5B6670">正式版 · 设计示例</text>
+    <text x="752" y="374" text-anchor="end" font-size="11.5" font-weight="600" fill="#8C1D2F">已选择</text>
+
+    <text x="288" y="430" font-size="11.5" fill="#5B6670">其他正式版（设计示例）</text>
+    <circle cx="304" cy="455" r="7" fill="#FFFFFF" stroke="#B9C2CC" stroke-width="1.5"/>
+    <text x="322" y="459" font-size="13" fill="#1E252B">1.20.6</text>
+    <text x="390" y="459" font-size="10.5" fill="#7A838D">正式版</text>
+    <text x="752" y="459" text-anchor="end" font-size="10" fill="#7A838D">安装中不可更改</text>
+    <rect x="288" y="474" width="472" height="1" fill="#EDF0F3"/>
+
+    <circle cx="304" cy="495" r="7" fill="#FFFFFF" stroke="#B9C2CC" stroke-width="1.5"/>
+    <text x="322" y="499" font-size="13" fill="#1E252B">1.19.4</text>
+    <text x="390" y="499" font-size="10.5" fill="#7A838D">正式版</text>
+    <text x="752" y="499" text-anchor="end" font-size="10" fill="#7A838D">安装中不可更改</text>
+    <text x="288" y="528" font-size="10" fill="#7A838D">开始安装前会自动检查所需 Java；要求由游戏版本决定。</text>
+  </g>
+
+  <!-- 安装目录 -->
+  <g id="directory-card">
+    <rect x="264" y="552" width="520" height="124" rx="10" fill="#FFFFFF" stroke="#D8DEE5"/>
+    <text x="288" y="580" font-size="16" font-weight="600" fill="#1E252B">安装目录</text>
+    <rect x="288" y="590" width="400" height="36" rx="6" fill="#F7F8FA" stroke="#D8DEE5"/>
+    <text x="300" y="613" font-size="10.5" fill="#3C4650">D:\HustMCL\instances\campus-demo</text>
+    <rect x="610" y="598" width="64" height="20" rx="10" fill="#F6E7EA"/>
+    <text x="642" y="612" text-anchor="middle" font-size="10" fill="#8C1D2F">设计示例</text>
+    <rect x="700" y="590" width="64" height="36" rx="6" fill="#F7F8FA" stroke="#D8DEE5"/>
+    <text x="732" y="613" text-anchor="middle" font-size="11.5" fill="#7A838D">更改…</text>
+    <text x="288" y="646" font-size="11" fill="#5B6670">预计需要 1.2 GB · 可用 86.5 GB（设计示例）</text>
+    <text x="288" y="664" font-size="10" fill="#7A838D">安装中不可更改目录；空间以实际检查结果为准。</text>
+  </g>
+
+  <!-- 安装说明 -->
+  <g id="install-notes-card">
+    <rect x="804" y="304" width="284" height="372" rx="10" fill="#FFFFFF" stroke="#D8DEE5"/>
+    <text x="828" y="334" font-size="16" font-weight="600" fill="#1E252B">安装说明</text>
+
+    <text x="828" y="364" font-size="11.5" font-weight="600" fill="#8C1D2F">进度</text>
+    <text x="828" y="382" font-size="10.5" fill="#5B6670">总量未知时只显示阶段与已传输量，</text>
+    <text x="828" y="398" font-size="10.5" fill="#5B6670">不显示虚构百分比。</text>
+
+    <text x="828" y="426" font-size="11.5" font-weight="600" fill="#8C1D2F">取消</text>
+    <text x="828" y="444" font-size="10.5" fill="#5B6670">取消后等待应用确认，保留已校验</text>
+    <text x="828" y="460" font-size="10.5" fill="#5B6670">文件，不删除存档。</text>
+
+    <text x="828" y="488" font-size="11.5" font-weight="600" fill="#8C1D2F">失败</text>
+    <text x="828" y="506" font-size="10.5" fill="#5B6670">从检查缓存开始重试，不重复下载</text>
+    <text x="828" y="522" font-size="10.5" fill="#5B6670">全部文件。</text>
+
+    <text x="828" y="550" font-size="11.5" font-weight="600" fill="#8C1D2F">完成</text>
+    <text x="828" y="568" font-size="10.5" fill="#5B6670">安装就绪不等于已进入主菜单，</text>
+    <text x="828" y="584" font-size="10.5" fill="#5B6670">启动状态单独显示。</text>
+
+    <rect x="828" y="602" width="236" height="1" fill="#EDF0F3"/>
+    <text x="828" y="624" font-size="10" fill="#7A838D">遇到问题时，可在「日志与错误」</text>
+    <text x="828" y="640" font-size="10" fill="#7A838D">查看脱敏记录与下一步建议。</text>
+  </g>
+
+  <g id="footer-note">
+    <text x="264" y="700" font-size="11" fill="#5B6670">设计示例：版本、目录、空间、阶段与传输量均为静态样稿；功能尚未接入。</text>
+  </g>
+</svg>
