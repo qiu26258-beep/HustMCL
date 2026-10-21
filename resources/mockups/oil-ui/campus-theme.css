@@ -1,0 +1,34 @@
+/* Shared decoration only. All task data and controls remain in each page. */
+.window{isolation:isolate}
+.window::before{
+  content:"";position:absolute;left:216px;right:0;top:40px;height:128px;
+  background:url("assets/canopy.svg") right top / 160px 128px no-repeat;
+  pointer-events:none;z-index:-1;
+}
+.rail-landscape{
+  position:absolute;left:0;top:324px;width:215px;height:206px;
+  background:url("assets/xiaoke-campus.jpg") left center / auto 318px no-repeat;
+  mask-image:linear-gradient(transparent,#000 18%,#000 78%,transparent);
+  opacity:.42;pointer-events:none;
+}
+.rail-caption{position:absolute;left:24px;top:512px;color:#6F675D;font-size:11px;letter-spacing:.04em}
+.xiaoke-scene{
+  position:relative;width:226px;height:280px;border-radius:10px;overflow:hidden;
+  background:#F4F0E7 url("assets/xiaoke-campus.jpg") 82% center / auto 280px no-repeat;
+  pointer-events:none;
+}
+.xiaoke-scene::after{content:"";position:absolute;inset:0;background:linear-gradient(transparent 82%,#FFFCF6)}
+.xiaoke-caption{font-size:13px;line-height:1.5;font-weight:600;margin:8px 0 1px;color:#4C647B}
+.xiaoke-sub{font-size:11px;color:#6F675D;margin-bottom:10px}
+.desk-side .side-link{padding:6px 0}
+.desk-main .launch-summary{margin-top:18px}
+.launch-summary .summary-row{padding:5px 0}
+.launch-summary .summary-row:last-child{border:0}
+.installation .rail-landscape{
+  top:316px;height:222px;background-position:82% center;background-size:auto 222px;opacity:.88;
+  mask-image:linear-gradient(transparent,#000 9%,#000 82%,transparent);
+}
+.installation .rail-caption{top:518px;font-size:10.5px}
+@media (forced-colors:active){
+  .window::before,.rail-landscape,.xiaoke-scene{display:none}
+}
