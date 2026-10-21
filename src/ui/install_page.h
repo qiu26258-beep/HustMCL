@@ -36,7 +36,6 @@ protected:
 private:
     void updateResponsiveLayout();
     void updateActionBar();
-    int stageNumber(application::TaskPhase phase) const;
     QString actionNote() const;
 
     QWidget* m_content = nullptr;

@@ -52,16 +52,22 @@ ctest --test-dir build/desktop-debug --output-on-failure
 build/desktop-debug/src/app/hustmcl_desktop.exe
 ```
 
-截图与界面测试：
+截图与界面测试。启动器是 Windows GUI 子系统，避免双击时出现控制台；命令行截图请用 `Start-Process -Wait` 或 `cmd /c` 等待进程，这样仍能重定向输出并取得非零退出码：
 
 ```powershell
 $env:PATH = "D:\HustMCL\.deps\Qt\Tools\mingw1310_64\bin;D:\HustMCL\.deps\Qt\6.10.3\mingw_64\bin;$env:PATH"
-& build/desktop-debug/src/app/hustmcl_desktop.exe `
-  --scenario install-unknown --page install --scale 1 --window-size 1120x720 `
-  --screenshot out/native-ui-review/install-unknown-1x.png
+$env:QT_QPA_PLATFORM = "offscreen"
+$exe = "build/desktop-debug/src/app/hustmcl_desktop.exe"
+$p = Start-Process -FilePath $exe -Wait -PassThru `
+  -ArgumentList @("--scenario","install-unknown","--page","install","--scale","1",
+                  "--window-size","1120x720",
+                  "--screenshot","out/native-ui-review/install-unknown-1x.png") `
+  -RedirectStandardOutput "out/native-ui-review/capture.stdout.txt" `
+  -RedirectStandardError "out/native-ui-review/capture.stderr.txt"
+$p.ExitCode
 ```
 
-可用场景：`home-ready`、`install-unknown`、`install-known`、`install-cancelling`、`install-cancelled`、`install-committing`、`install-failed`、`install-long-path`。`--native-screenshot` 通过 Windows QPA 抓取已显示窗口；`QT_QPA_PLATFORM=offscreen` 可做可重复的离屏截图。
+可用场景：`home-ready`、`install-unknown`、`install-known`、`install-cancelling`、`install-cancelled`、`install-committing`、`install-failed`、`install-long-path`。`--native-screenshot` 通过 Windows QPA 抓取已显示窗口；`QT_QPA_PLATFORM=offscreen` 可做可重复的离屏截图。`--scale` 是 Qt 缩放提示，不是跨平台绝对 DPI；Windows 原生平台仍按系统缩放（本机 150%），离屏基础 1x / 1.5x / 2x 单独记录。
 
 ## 演示边界
 

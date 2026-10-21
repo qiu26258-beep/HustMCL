@@ -86,6 +86,7 @@ HomePage::HomePage(QWidget* parent)
     rightLayout->setContentsMargins(0, 0, 0, 0);
     rightLayout->setSpacing(8);
     m_artwork = new CampusArtwork(m_right);
+    m_artwork->setObjectName(QStringLiteral("CampusArtwork"));
     m_artwork->setFixedSize(226, 280);
     rightLayout->addWidget(m_artwork, 0, Qt::AlignHCenter);
     m_artCaption = new QLabel(QStringLiteral("小科陪你，开启新世界。"), m_right);

@@ -110,8 +110,8 @@ void StageRow::setProgress(qint64 completedBytes, std::optional<qint64> totalByt
     }
     if (totalBytes.has_value() && totalBytes.value() > 0) {
         const qint64 total = totalBytes.value();
-        const int value = static_cast<int>((static_cast<double>(completedBytes) / static_cast<double>(total)) * 1000.0);
-        m_progress->setValue(qBound(0, value, 1000));
+        const int value = static_cast<int>(qRound(copy::progressFraction(completedBytes, total) * 1000.0));
+        m_progress->setValue(value);
         m_progress->show();
         m_progressText->setText(QStringLiteral("已下载 %1 / %2 · %3")
                                     .arg(copy::formatBytes(completedBytes),

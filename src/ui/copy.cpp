@@ -79,26 +79,6 @@ QString javaStateText(JavaState state)
     return QStringLiteral("状态未知");
 }
 
-QString phaseTitle(TaskPhase phase)
-{
-    switch (phase) {
-    case TaskPhase::NotInstalled:
-        return QStringLiteral("未安装");
-    case TaskPhase::Resolving:
-        return QStringLiteral("解析版本");
-    case TaskPhase::PreparingEnvironment:
-        return QStringLiteral("准备环境");
-    case TaskPhase::Downloading:
-        return QStringLiteral("下载文件");
-    case TaskPhase::Verifying:
-        return QStringLiteral("校验文件");
-    case TaskPhase::Ready:
-    case TaskPhase::Committing:
-        return QStringLiteral("就绪");
-    }
-    return QStringLiteral("状态未知");
-}
-
 QString errorCodeText(TaskErrorCode code)
 {
     switch (code) {
@@ -145,12 +125,21 @@ QString formatMemory(int memoryMb)
     return QStringLiteral("%1 MB").arg(memoryMb);
 }
 
+double progressFraction(qint64 completedBytes, qint64 totalBytes)
+{
+    if (completedBytes <= 0 || totalBytes <= 0) {
+        return 0.0;
+    }
+    const double fraction = static_cast<double>(completedBytes) / static_cast<double>(totalBytes);
+    return qBound(0.0, fraction, 1.0);
+}
+
 QString formatPercent(qint64 completedBytes, qint64 totalBytes)
 {
     if (totalBytes <= 0) {
         return {};
     }
-    const int percent = qBound(0, static_cast<int>((static_cast<double>(completedBytes) / static_cast<double>(totalBytes)) * 100.0 + 0.5), 100);
+    const int percent = static_cast<int>(qRound(progressFraction(completedBytes, totalBytes) * 100.0));
     return QStringLiteral("%1%").arg(percent);
 }
 

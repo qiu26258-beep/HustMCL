@@ -1,23 +1,85 @@
 #include "demo_controller.h"
 #include "main_window.h"
 
+#include "copy.h"
 #include "home_page.h"
 #include "install_page.h"
+#include "install_stages.h"
 #include "primary_action_bar.h"
 #include "sidebar.h"
+#include "theme.h"
 
-#include <QCoreApplication>
+#include <QApplication>
 #include <QLabel>
 #include <QListWidget>
 #include <QPixmapCache>
 #include <QProgressBar>
 #include <QPushButton>
 #include <QSignalSpy>
+#include <QStyle>
+#include <QStyleFactory>
 #include <QTest>
 
-#include <algorithm>
+#include <cmath>
+#include <limits>
 
 namespace application = hustmcl::application;
+
+namespace {
+
+QString joinedLabelText(QWidget& widget)
+{
+    QStringList texts;
+    for (QLabel* label : widget.findChildren<QLabel*>()) {
+        texts.append(label->text());
+    }
+    return texts.join(QLatin1Char('\n'));
+}
+
+QString visibleLabelText(QWidget& widget)
+{
+    QStringList texts;
+    for (QLabel* label : widget.findChildren<QLabel*>()) {
+        if (label->isVisible()) {
+            texts.append(label->text());
+        }
+    }
+    return texts.join(QLatin1Char('\n'));
+}
+
+QProgressBar* visibleProgressBar(QWidget& widget)
+{
+    for (QProgressBar* bar : widget.findChildren<QProgressBar*>()) {
+        if (bar->isVisible()) {
+            return bar;
+        }
+    }
+    return nullptr;
+}
+
+application::InstallSnapshot downloadingSnapshot(qint64 completedBytes,
+                                                 std::optional<qint64> totalBytes)
+{
+    application::InstallSnapshot snapshot;
+    snapshot.instanceDisplayName = QStringLiteral("校园生存");
+    snapshot.versionLabel = QStringLiteral("1.21.4");
+    snapshot.task.taskId = QStringLiteral("task-progress");
+    snapshot.task.phase = application::TaskPhase::Downloading;
+    snapshot.task.state = application::TaskState::Running;
+    snapshot.task.completedBytes = completedBytes;
+    snapshot.task.totalBytes = totalBytes;
+    snapshot.task.cancelAvailable = true;
+    snapshot.task.phaseDetail = QStringLiteral("正在下载游戏资源");
+    return snapshot;
+}
+
+QLabel* stageSub(hustmcl::ui::InstallPage& page, int index)
+{
+    auto* row = page.findChild<QWidget*>(QStringLiteral("StageRow%1").arg(index));
+    return row ? row->findChild<QLabel*>(QStringLiteral("StageSub")) : nullptr;
+}
+
+} // namespace
 
 class TestUi : public QObject {
     Q_OBJECT
@@ -28,17 +90,28 @@ private slots:
     void primaryActionComesFromSnapshot();
     void unknownTotalHasNoPercentage();
     void knownTotalShowsProgress();
+    void progressFormattingIsSaturated();
+    void progressWidgetSaturatesAndRejectsNonPositiveTotals();
+    void stageFailureTextUsesCurrentPhase();
     void cancelRequiresApplicationConfirmation();
     void committingCannotBeCancelled();
     void failureAndRetryReplaceTask();
     void staleCancellationDoesNotReplaceNewTask();
     void longPathElidesAndRepeatedRenderKeepsWidgetCount();
+    void noDecorationHidesArtwork();
     void settingsAndLogsAreDisabled();
 };
 
 void TestUi::initTestCase()
 {
     Q_INIT_RESOURCE(resources);
+    auto* app = qobject_cast<QApplication*>(QCoreApplication::instance());
+    QVERIFY(app);
+    auto* style = QStyleFactory::create(QStringLiteral("Fusion"));
+    QVERIFY(style);
+    app->setStyle(style);
+    app->setFont(hustmcl::ui::theme::baseFont());
+    app->setStyleSheet(hustmcl::ui::theme::styleSheet());
 }
 
 void TestUi::navigationSwitchesPages()
@@ -110,11 +183,7 @@ void TestUi::unknownTotalHasNoPercentage()
     page.setSnapshot(snapshot);
     QCoreApplication::processEvents();
 
-    QStringList texts;
-    for (QLabel* label : page.findChildren<QLabel*>()) {
-        texts.append(label->text());
-    }
-    const QString joined = texts.join(QLatin1Char('\n'));
+    const QString joined = joinedLabelText(page);
     QVERIFY(joined.contains(QStringLiteral("总量未知")));
     QVERIFY(!joined.contains(QLatin1Char('%')));
     for (QProgressBar* bar : page.findChildren<QProgressBar*>()) {
@@ -149,11 +218,111 @@ void TestUi::knownTotalShowsProgress()
         }
     }
     QVERIFY(visibleProgress);
-    QStringList texts;
-    for (QLabel* label : page.findChildren<QLabel*>()) {
-        texts.append(label->text());
+    QVERIFY(joinedLabelText(page).contains(QLatin1Char('%')));
+}
+
+void TestUi::progressFormattingIsSaturated()
+{
+    QCOMPARE(hustmcl::ui::copy::formatPercent(134217728, 1), QStringLiteral("100%"));
+    QCOMPARE(hustmcl::ui::copy::formatPercent(std::numeric_limits<qint64>::max(), 1),
+             QStringLiteral("100%"));
+    QCOMPARE(hustmcl::ui::copy::formatPercent(1, 3), QStringLiteral("33%"));
+    QCOMPARE(hustmcl::ui::copy::formatPercent(2, 3), QStringLiteral("67%"));
+    QCOMPARE(hustmcl::ui::copy::formatPercent(10, 100), QStringLiteral("10%"));
+    QCOMPARE(hustmcl::ui::copy::formatPercent(-5, 100), QStringLiteral("0%"));
+    QCOMPARE(hustmcl::ui::copy::formatPercent(0, 100), QStringLiteral("0%"));
+    QCOMPARE(hustmcl::ui::copy::formatPercent(10, 0), QString());
+    QCOMPARE(hustmcl::ui::copy::formatPercent(10, -1), QString());
+
+    QVERIFY(hustmcl::ui::copy::progressFraction(134217728, 1) == 1.0);
+    QVERIFY(hustmcl::ui::copy::progressFraction(-5, 100) == 0.0);
+    QVERIFY(hustmcl::ui::copy::progressFraction(10, 0) == 0.0);
+    QVERIFY(qAbs(hustmcl::ui::copy::progressFraction(1, 4) - 0.25) < 1e-12);
+}
+
+void TestUi::progressWidgetSaturatesAndRejectsNonPositiveTotals()
+{
+    hustmcl::ui::InstallPage page;
+    page.resize(1120, 720);
+    page.show();
+    QCoreApplication::processEvents();
+
+    page.setSnapshot(downloadingSnapshot(50, 200));
+    QCoreApplication::processEvents();
+    auto* bar = visibleProgressBar(page);
+    QVERIFY(bar);
+    QCOMPARE(bar->value(), 250);
+    QVERIFY(visibleLabelText(page).contains(QStringLiteral("25%")));
+
+    page.setSnapshot(downloadingSnapshot(134217728, 1));
+    QCoreApplication::processEvents();
+    bar = visibleProgressBar(page);
+    QVERIFY(bar);
+    QCOMPARE(bar->value(), 1000);
+    QVERIFY(visibleLabelText(page).contains(QStringLiteral("100%")));
+
+    page.setSnapshot(downloadingSnapshot(-5, 100));
+    QCoreApplication::processEvents();
+    bar = visibleProgressBar(page);
+    QVERIFY(bar);
+    QCOMPARE(bar->value(), 0);
+    const QString negativeText = visibleLabelText(page);
+    QVERIFY(negativeText.contains(QStringLiteral("0%")));
+    QVERIFY(!negativeText.contains(QStringLiteral("-5")));
+
+    for (const qint64 total : {qint64(0), qint64(-1)}) {
+        page.setSnapshot(downloadingSnapshot(5, total));
+        QCoreApplication::processEvents();
+        QVERIFY(!visibleProgressBar(page));
+        const QString unknownText = visibleLabelText(page);
+        QVERIFY(unknownText.contains(QStringLiteral("总量未知")));
+        QVERIFY(!unknownText.contains(QLatin1Char('%')));
     }
-    QVERIFY(texts.join(QLatin1Char('\n')).contains(QLatin1Char('%')));
+}
+
+void TestUi::stageFailureTextUsesCurrentPhase()
+{
+    hustmcl::ui::InstallPage page;
+    page.resize(1120, 720);
+    page.show();
+    QCoreApplication::processEvents();
+
+    application::InstallSnapshot snapshot = downloadingSnapshot(0, std::nullopt);
+    snapshot.task.state = application::TaskState::Failed;
+    const auto setPhase = [&page, &snapshot](application::TaskPhase phase) {
+        snapshot.task.phase = phase;
+        page.setSnapshot(snapshot);
+        QCoreApplication::processEvents();
+    };
+
+    setPhase(application::TaskPhase::PreparingEnvironment);
+    auto* preparingSub = stageSub(page, 2);
+    QVERIFY(preparingSub);
+    QCOMPARE(preparingSub->text(), QStringLiteral("准备环境失败"));
+    auto* headerMeta = page.findChild<QLabel*>(QStringLiteral("HeaderMeta"));
+    QVERIFY(headerMeta);
+    QCOMPARE(headerMeta->text(), QStringLiteral("阶段 3 / 6"));
+
+    setPhase(application::TaskPhase::Verifying);
+    auto* verifyingSub = stageSub(page, 4);
+    QVERIFY(verifyingSub);
+    QCOMPARE(verifyingSub->text(), QStringLiteral("校验失败"));
+    QCOMPARE(headerMeta->text(), QStringLiteral("阶段 5 / 6"));
+
+    setPhase(application::TaskPhase::Downloading);
+    auto* downloadingSub = stageSub(page, 3);
+    QVERIFY(downloadingSub);
+    QCOMPARE(downloadingSub->text(), QStringLiteral("下载失败"));
+    QCOMPARE(headerMeta->text(), QStringLiteral("阶段 4 / 6"));
+
+    setPhase(application::TaskPhase::Committing);
+    auto* committingSub = stageSub(page, 5);
+    QVERIFY(committingSub);
+    QCOMPARE(committingSub->text(), QStringLiteral("提交失败"));
+    QCOMPARE(headerMeta->text(), QStringLiteral("阶段 6 / 6"));
+
+    QCOMPARE(hustmcl::ui::installStageDefinitions().at(2).title, QStringLiteral("准备环境"));
+    QCOMPARE(hustmcl::ui::installStageNumber(application::TaskPhase::PreparingEnvironment), 3);
 }
 
 void TestUi::cancelRequiresApplicationConfirmation()
@@ -177,21 +346,13 @@ void TestUi::cancelRequiresApplicationConfirmation()
     QCoreApplication::processEvents();
 
     QVERIFY(controller.installSnapshot().task.state == application::TaskState::Cancelling);
-    QStringList texts;
-    for (QLabel* label : page.findChildren<QLabel*>()) {
-        texts.append(label->text());
-    }
-    QVERIFY(texts.join(QLatin1Char('\n')).contains(QStringLiteral("正在取消")));
+    QVERIFY(joinedLabelText(page).contains(QStringLiteral("正在取消")));
     QVERIFY(!bar->secondaryButton()->isEnabled());
 
     controller.finishCancellation(taskId);
     QCoreApplication::processEvents();
     QVERIFY(controller.installSnapshot().task.state == application::TaskState::Cancelled);
-    texts.clear();
-    for (QLabel* label : page.findChildren<QLabel*>()) {
-        texts.append(label->text());
-    }
-    QVERIFY(texts.join(QLatin1Char('\n')).contains(QStringLiteral("已取消")));
+    QVERIFY(joinedLabelText(page).contains(QStringLiteral("已取消")));
 }
 
 void TestUi::committingCannotBeCancelled()
@@ -271,7 +432,7 @@ void TestUi::longPathElidesAndRepeatedRenderKeepsWidgetCount()
     QVERIFY(path->text() != path->toolTip());
     QVERIFY(path->text().contains(QStringLiteral("…")));
 
-    const int before = page.findChildren<QWidget*>().size();
+    const auto before = page.findChildren<QWidget*>().size();
     for (int i = 0; i < 5; ++i) {
         page.setSnapshot(controller.installSnapshot());
         QCoreApplication::processEvents();
@@ -291,6 +452,30 @@ void TestUi::longPathElidesAndRepeatedRenderKeepsWidgetCount()
     QVERIFY(!rendered.isNull());
     QPixmap cached;
     QVERIFY(QPixmapCache::find(QStringLiteral("hustmcl/campus/xiaoke-campus"), &cached));
+}
+
+void TestUi::noDecorationHidesArtwork()
+{
+    hustmcl::app::DemoController controller;
+    hustmcl::app::MainWindow window(&controller);
+    window.setDecorationsVisible(false);
+    window.setCurrentPage(hustmcl::app::MainWindow::Page::Install);
+    window.show();
+    QCoreApplication::processEvents();
+
+    auto* sidebarArtwork = window.sidebar()->findChild<QWidget*>(QStringLiteral("CampusArtwork"));
+    QVERIFY(sidebarArtwork);
+    QVERIFY(sidebarArtwork->isHidden());
+    auto* sidebarCaption = window.sidebar()->findChild<QLabel*>(QStringLiteral("SidebarCaption"));
+    QVERIFY(sidebarCaption);
+    QVERIFY(sidebarCaption->isHidden());
+
+    auto* homeArtwork = window.homePage()->findChild<QWidget*>(QStringLiteral("CampusArtwork"));
+    QVERIFY(homeArtwork);
+    QVERIFY(homeArtwork->isHidden());
+    auto* homeCaption = window.homePage()->findChild<QLabel*>(QStringLiteral("SidebarCaption"));
+    QVERIFY(homeCaption);
+    QVERIFY(homeCaption->isHidden());
 }
 
 void TestUi::settingsAndLogsAreDisabled()

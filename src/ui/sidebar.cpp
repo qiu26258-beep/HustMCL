@@ -95,6 +95,7 @@ Sidebar::Sidebar(QWidget* parent)
     layout->addWidget(m_navNote);
 
     m_artwork = new CampusArtwork(this);
+    m_artwork->setObjectName(QStringLiteral("CampusArtwork"));
     m_artwork->setOverlayColor(QColor(QString::fromLatin1(theme::kRail)));
     m_artwork->setFixedHeight(180);
     m_artwork->setMinimumWidth(160);

@@ -2,6 +2,7 @@
 
 #include "copy.h"
 #include "elided_label.h"
+#include "install_stages.h"
 #include "page_header.h"
 #include "primary_action_bar.h"
 #include "stage_list.h"
@@ -164,7 +165,7 @@ void InstallPage::setSnapshot(const application::InstallSnapshot& snapshot)
     const QString subtitle = QStringLiteral("为%1准备 Minecraft %2")
                                  .arg(instanceName, snapshot.versionLabel);
     header()->setContent(QStringLiteral("安装游戏"), subtitle,
-                         QStringLiteral("阶段 %1 / 6").arg(stageNumber(task.phase)));
+                         QStringLiteral("阶段 %1 / 6").arg(installStageNumber(task.phase)));
 
     m_version->setText(snapshot.versionLabel);
     m_recommendedBadge->setVisible(snapshot.recommended);
@@ -319,32 +320,13 @@ void InstallPage::updateActionBar()
     }
 }
 
-int InstallPage::stageNumber(application::TaskPhase phase) const
-{
-    switch (phase) {
-    case application::TaskPhase::NotInstalled:
-        return 1;
-    case application::TaskPhase::Resolving:
-        return 2;
-    case application::TaskPhase::PreparingEnvironment:
-        return 3;
-    case application::TaskPhase::Downloading:
-        return 4;
-    case application::TaskPhase::Verifying:
-        return 5;
-    case application::TaskPhase::Ready:
-    case application::TaskPhase::Committing:
-        return 6;
-    }
-    return 1;
-}
-
 QString InstallPage::actionNote() const
 {
     const application::TaskSnapshot& task = m_snapshot.task;
     QString detail = task.phaseDetail;
     if (detail.isEmpty()) {
-        detail = copy::phaseTitle(task.phase);
+        const auto& stages = installStageDefinitions();
+        detail = stages.at(static_cast<std::size_t>(installStageIndex(task.phase))).title;
     }
     if (task.totalBytes.has_value() && task.totalBytes.value() > 0) {
         return QStringLiteral("%1 · 已下载 %2 / %3 · %4")

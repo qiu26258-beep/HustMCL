@@ -17,7 +17,10 @@ else()
     target_compile_options(hustmcl_desktop_core PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 
-add_executable(hustmcl_desktop main.cpp)
+# WIN32 gives the delivered launcher the Windows GUI subsystem (no console
+# flashing on double-click). Qt's executable wrapper supplies the WinMain
+# entry point while keeping the normal main()/stdout/stderr code below.
+qt_add_executable(hustmcl_desktop WIN32 main.cpp)
 target_link_libraries(hustmcl_desktop PRIVATE hustmcl_desktop_core Qt6::Widgets)
 target_compile_features(hustmcl_desktop PRIVATE cxx_std_20)
 set_target_properties(hustmcl_desktop PROPERTIES CXX_EXTENSIONS OFF)

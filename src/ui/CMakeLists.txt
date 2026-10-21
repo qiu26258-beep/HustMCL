@@ -9,6 +9,8 @@ add_library(hustmcl_ui STATIC
     home_page.h
     install_page.cpp
     install_page.h
+    install_stages.cpp
+    install_stages.h
     leaf_motif.cpp
     leaf_motif.h
     page_header.cpp
