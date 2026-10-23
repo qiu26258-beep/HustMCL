@@ -1,0 +1,11 @@
+# HustMCL icon generation record
+
+Tool: built-in image_gen, transparent PNG. Original generation and one targeted edit.
+
+## Original prompt
+
+Create one finished Windows desktop application icon for HustMCL, an independent Huazhong University of Science and Technology (HUST / 华中科技大学) campus-themed Minecraft Java launcher. Original logo-brand asset, not a mockup. A single centered rounded-square tile, transparent outside the tile, straight-on view. Campus Desk visual language: deep forest green #174B3B, warm ivory #F4F0E6, a tiny restrained brick-red accent. Inside the tile a bold ivory architectural gate / abstract capital H: two strong square pillars with a horizontal lintel, airy central opening, a small geometric roofline suggesting a modern Chinese university campus entrance. Integrate one simple camphor-tree leaf silhouette and a compact voxel/grass-block base so campus and block-building are understood as one cohesive mark. Minimal premium flat-to-soft-matte dimensional design, crisp silhouette, broad shapes, very sparse detail, balanced negative space; still recognizable at 16 and 32 pixels. Main mark fills about 75% of the tile. No words, no Chinese lettering, no numbers, no tiny lines, no outer shadow beyond tile, no official university seal, no copied Minecraft logo or creeper face, no presentation grid, no watermark. 1024x1024 square PNG with real alpha outside the rounded tile.
+
+## Final targeted edit
+
+Edit this single Windows application icon. Preserve the transparent outer alpha, rounded forest-green tile, ivory campus gate columns, central leaf, restrained brick-red accent, voxel grass base, camera/framing, lighting and material style. Change ONLY the gate's upper roof/lintel silhouette: replace the curved/upturned traditional paifang-style roof with a flat modernist university campus gateway, broad clean horizontal ivory beam with a crisp straight top, small simple rectangular corner blocks, no sloping/curved eaves. The combined gate should read as an abstract H, contemporary and scholarly, suited to a Huazhong University of Science and Technology campus-themed launcher. Slightly reduce architectural micro-details for small-icon legibility, while keeping the overall composition intact. No text or official emblem. Keep true transparency outside the tile. Output one finished square software icon, not a mockup.

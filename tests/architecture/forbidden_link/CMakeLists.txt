@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.24)
+project(ForbiddenCoreLink NONE)
+include(${ARCHITECTURE_MODULE})
+add_library(hustmcl_core INTERFACE)
+add_library(Qt6::Widgets INTERFACE IMPORTED)
+target_link_libraries(hustmcl_core INTERFACE Qt6::Widgets)
+hustmcl_check_core_dependencies(hustmcl_core)

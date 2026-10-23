@@ -1,0 +1,17 @@
+HustMCL public preview: third-party notices
+
+Qt 6.10.3 Core, GUI, Widgets and Network are dynamically linked under LGPL-3.0.
+Qt DLLs may be replaced with compatible modified builds. Reverse engineering
+for debugging modifications to these LGPL components is permitted.
+LGPL/GPL texts and the Qt SPDX inventory accompany this installer.
+Corresponding Qt source: qtbase-everywhere-src-6.10.3.tar.xz, supplied as a
+separate asset in the same GitHub Release; original upstream location:
+https://download.qt.io/archive/qt/6.10/6.10.3/submodules/qtbase-everywhere-src-6.10.3.tar.xz
+
+GCC runtime exception, MinGW-w64 and winpthreads notices are in subfolders.
+miniz 3.1.0 is statically linked; upstream license is miniz-LICENSE.txt.
+
+No Minecraft game files, assets, mods, Java runtime or character-derived
+illustrations are included. Java and game content are obtained only when
+the user imports a supported pack, under their respective upstream terms.
+HustMCL is an independent launcher, not an official Minecraft product.

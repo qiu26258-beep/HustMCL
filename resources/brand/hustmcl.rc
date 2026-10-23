@@ -1,0 +1,3 @@
+// Shared Windows icon resource for HustMCL executables.
+// The icon frames are derived mechanically from hustmcl.png.
+1 ICON "hustmcl.ico"

@@ -1,0 +1,9 @@
+/build/
+/out/
+/.deps/
+/CMakeUserPresets.json
+/.vs/
+*.user
+__pycache__/
+*.pyc
+/aqtinstall.log

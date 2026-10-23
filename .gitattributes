@@ -1,0 +1,4 @@
+# Preserve the downloaded provenance hash on every checkout, including autocrlf=true.
+tests/fixtures/metadata/1.21.1.json -text
+tests/fixtures/metadata/17.json -text
+third_party/miniz/* -text whitespace=-blank-at-eol
