@@ -2,5 +2,6 @@
 <RCC version="1.0">
     <qresource prefix="/brand">
         <file alias="public-campus.svg">public-campus.svg</file>
+        <file alias="hustmcl-128.png">hustmcl-128.png</file>
     </qresource>
 </RCC>

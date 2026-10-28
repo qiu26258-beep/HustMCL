@@ -45,6 +45,8 @@ public:
     void handleDroppedUrls(const QList<QUrl>& urls);
     void setDecorationsVisible(bool visible);
     void focusPrimaryAction();
+    // Scrolls the home page to the vanilla installer and focuses its selector.
+    void focusVanillaInstaller();
 
 signals:
     void primaryActionRequested();
@@ -57,6 +59,8 @@ signals:
     void modpackCancelRequested(const QString& taskId);
     void modpackRetryRequested(const QString& taskId);
     void modpackInstanceSelected(const QString& instanceId);
+    void vanillaInstallRequested(const QString& version);
+    void vanillaVersionsReloadRequested();
 
 protected:
     void resizeEvent(QResizeEvent* event) override;
@@ -69,9 +73,11 @@ private:
     void updateResponsiveLayout();
     void applyActionBar();
     void updateModpackUi();
+    void updateVanillaUi();
     void chooseImportFile();
     void requestImport(const QString& localPath);
     void showImportHint(const QString& text);
+    void showVanillaHint(const QString& text);
     bool importLocked() const;
     QString actionTitle(const application::HomeSnapshot& snapshot) const;
 
@@ -94,6 +100,12 @@ private:
     SummaryRow* m_launchRow = nullptr;
     QLabel* m_footnote = nullptr;
     QWidget* m_modpackSection = nullptr;
+    QWidget* m_vanillaSection = nullptr;
+    QComboBox* m_vanillaVersion = nullptr;
+    QPushButton* m_vanillaInstall = nullptr;
+    QPushButton* m_vanillaReload = nullptr;
+    QLabel* m_vanillaVersionsError = nullptr;
+    QLabel* m_vanillaHint = nullptr;
     QFrame* m_modpackDropZone = nullptr;
     QPushButton* m_modpackPick = nullptr;
     QComboBox* m_modpackInstance = nullptr;

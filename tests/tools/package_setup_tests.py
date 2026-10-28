@@ -53,7 +53,7 @@ class PackageTests(unittest.TestCase):
     def test_bad_paths_and_personal_paths_rejected(self):
         for path in ("../bad", "data/../bad", "/runtime/java", "C:/bad", "runtime\\java", "runtime//java",
                      "runtime/NUL.txt", "runtime/foo.", "runtime/foo ", "runtime/{app}", 'runtime/a"b',
-                     "data/game/saves/world/level.dat", "data/launcher-logs/log.json", "unknown.txt"):
+                     "data/game/saves/world/level.dat", "data/launcher-logs/log.json", "data/credentials/microsoft.dpapi", "unknown.txt"):
             with self.subTest(path=path), self.assertRaises(ValueError):
                 setup.release_path(path)
 
@@ -151,6 +151,34 @@ class PackageTests(unittest.TestCase):
             self.fail("Cannot create junction fixture")
         with self.assertRaisesRegex(ValueError, "Reparse"):
             setup.validate_payload(self.package)
+
+    def test_account_preview_is_isolated_and_never_packages_credentials(self):
+        import struct
+        from unittest.mock import patch
+        launcher = self.root / "accounts.exe"
+        body = bytearray(256)
+        body[:2] = b"MZ"
+        struct.pack_into("<I", body, 60, 128)
+        body[128:132] = b"PE\0\0"
+        struct.pack_into("<H", body, 132, 0x8664)
+        launcher.write_bytes(body + "0.1.0-public-preview".encode("utf-16le"))
+        credential = self.package / "data/credentials/microsoft.dpapi"
+        credential.parent.mkdir(parents=True)
+        credential.write_bytes(b"private test credential")
+        output = self.root / "account-build"
+
+        def compile_fixture(command, **kwargs):
+            self.assertIn("/DInstallId=HustMCL.AccountPreview", command)
+            self.assertIn("/DInstallDirName=HustMCL-Accounts", command)
+            self.assertIn("/DShortcutName=HustMCL Accounts", command)
+            (output / "HustMCL-Setup-Windows-x64.exe").write_bytes(b"fixture installer")
+
+        with patch.object(setup.subprocess, "run", side_effect=compile_fixture):
+            setup.build(self.package, output, self.root / "compiler.exe", ROOT / "tools/hustmcl_setup.iss", launcher, "accounts")
+        self.assertFalse((output / "payload/data").exists())
+        self.assertFalse((output / "payload/runtime").exists())
+        self.assertEqual(credential.read_bytes(), b"private test credential")
+        self.assertEqual(json.loads((output / "build.json").read_text())["channel"], "accounts")
 
     def test_modpack_build_is_isolated_and_includes_miniz_license(self):
         from unittest.mock import patch

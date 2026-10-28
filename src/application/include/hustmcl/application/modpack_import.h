@@ -2,6 +2,7 @@
 #include <hustmcl/core/modpack.h>
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <functional>
 #include <optional>
 #include <variant>
@@ -25,6 +26,8 @@ public:
     using Done = std::function<void(ImportResult<std::monostate>)>;
     virtual ~ModpackWorkspace() = default;
     virtual void inspect(const QString& task, const QString& archive, std::function<void(ImportResult<core::Modpack>)>) = 0;
+    virtual void inspectVanilla(const QString&, const QString&, std::function<void(ImportResult<core::Modpack>)> done) { done(ImportFailure{ImportError::UnsupportedFormat, {}}); }
+    virtual void listVanillaVersions(std::function<void(ImportResult<QStringList>)> done) { done(QStringList{}); }
     virtual void prepareGame(const QString& task, Progress, Done) = 0;
     virtual void installFiles(const QString& task, Progress, Done) = 0;
     virtual void commit(const QString& task, std::function<void(ImportResult<InstalledInstance>)>) = 0;
@@ -40,6 +43,10 @@ struct ModpackSnapshot {
     std::optional<ImportFailure> error;
     std::vector<InstalledInstance> instances;
     bool launchActive = false;
+    QString vanillaVersion;
+    QStringList vanillaVersions;
+    bool versionsLoading = false;
+    std::optional<ImportFailure> versionsError;
 };
 [[nodiscard]] bool importActive(ImportPhase phase);
 class ModpackController final : public QObject {
@@ -49,6 +56,8 @@ public:
     ~ModpackController() override;
     ModpackSnapshot snapshot() const { return state_; }
     bool importFile(const QString& localPath);
+    bool installVanilla(const QString& version);
+    void loadVanillaVersions();
     bool cancel(const QString& taskId);
     bool retry(const QString& taskId);
     bool selectInstance(const QString& instanceId);
@@ -58,6 +67,7 @@ signals:
     void instanceSelected(const hustmcl::application::InstalledInstance& instance);
 private:
     void publish();
+    bool begin(const QString& localPath, const QString& vanillaVersion);
     bool current(const QString&, ImportPhase) const;
     void progress(const QString&, ImportPhase, ImportProgress);
     void failed(const QString&, ImportFailure);

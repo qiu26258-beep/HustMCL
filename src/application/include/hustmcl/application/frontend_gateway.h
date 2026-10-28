@@ -21,8 +21,13 @@ public:
     virtual void requestPrimaryAction() = 0;
     virtual void requestCancel(const QString& taskId) = 0;
     virtual void requestRetry(const QString& taskId) = 0;
+    virtual void requestSignIn() {}
+    virtual void requestSignOut() {}
+    virtual void requestCancelSignIn() {}
     // Offline identity changes are accepted only while no launch is active.
     virtual bool setPlayerName(const QString&) { return false; }
+    // Memory limit for the next launch; accepted only while no launch is active and within kMin/kMaxMemoryMb.
+    virtual bool setMemoryMb(int) { return false; }
 
 signals:
     void homeChanged(const hustmcl::application::HomeSnapshot& snapshot);

@@ -1,5 +1,8 @@
 add_library(hustmcl_application STATIC
     frontend_gateway.cpp
+    account.cpp
+    authenticated_launch.cpp
+    include/hustmcl/application/account.h
     content_market.cpp
     modpack_import.cpp
     include/hustmcl/application/modpack_import.h
@@ -29,6 +32,9 @@ else()
 endif()
 
 if(BUILD_TESTING)
+    add_executable(account_tests ${PROJECT_SOURCE_DIR}/tests/application/account_tests.cpp)
+    target_link_libraries(account_tests PRIVATE hustmcl_application)
+    add_test(NAME application.account COMMAND account_tests)
     add_executable(modpack_import_tests ${PROJECT_SOURCE_DIR}/tests/application/modpack_import_tests.cpp)
     target_link_libraries(modpack_import_tests PRIVATE hustmcl_application)
     add_test(NAME application.modpack_import COMMAND modpack_import_tests)

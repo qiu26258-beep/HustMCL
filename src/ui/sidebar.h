@@ -20,7 +20,7 @@ public:
 
     void setRealMode(bool realMode);
     void setMarketAvailable(bool available);
-    void setAccount(const application::AccountSnapshot& account);
+    void setAccount(const application::AccountSnapshot& account, bool offlineMode);
     void setCurrentPage(int pageIndex);
     void setArtworkVisible(bool visible);
     void setCompact(bool compact);
@@ -34,6 +34,8 @@ signals:
 private:
     void updateArtworkVisibility();
     void updateAccountLink();
+    void updateAccountPresentation();
+    void applyModeCopy();
     void updateMarketItem();
 
     QListWidget* m_nav = nullptr;
@@ -50,6 +52,7 @@ private:
     QLabel* m_subCaption = nullptr;
     application::AccountSnapshot m_account;
     bool m_realMode = false;
+    bool m_offlineMode = true;
     bool m_marketAvailable = false;
     bool m_artworkRequested = false;
     bool m_compact = false;

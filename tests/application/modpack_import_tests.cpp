@@ -9,6 +9,7 @@ struct Workspace:ModpackWorkspace {
     std::function<void(ImportResult<InstalledInstance>)> committed;
     int prepares=0,files=0,commits=0,cancels=0,releases=0;
     void inspect(const QString&,const QString&,decltype(inspected) f)override{inspected=std::move(f);}
+    void inspectVanilla(const QString&,const QString&,decltype(inspected) f)override{inspected=std::move(f);}
     void prepareGame(const QString&,Progress,Done f)override{++prepares;prepared=std::move(f);}
     void installFiles(const QString&,Progress,Done f)override{++files;installed=std::move(f);}
     void commit(const QString&,decltype(committed) f)override{++commits;committed=std::move(f);}
@@ -44,5 +45,15 @@ int main(int argc,char**argv){
  // Cancelling waits for the active phase to settle and cannot publish a partial installation.
  c.importFile("D:/pack.zip");w.inspected(pack);c.cancel(c.snapshot().taskId);w.prepared(std::monostate{});
  if(c.snapshot().phase!=ImportPhase::Cancelled||w.commits!=1)return 13;
+ { Workspace vanilla; ModpackController v(vanilla,{});
+   if(v.installVanilla("../bad")||!v.installVanilla("1.21.1")||v.installVanilla("26.2"))return 30;
+   if(v.snapshot().vanillaVersion!="1.21.1"||!v.snapshot().archivePath.isEmpty())return 31;
+   vanilla.inspected(pack);vanilla.prepared(ImportFailure{ImportError::Network,{}});
+   if(!v.retry(v.snapshot().taskId)||v.snapshot().vanillaVersion!="1.21.1")return 32;
+   vanilla.inspected(pack);vanilla.prepared(std::monostate{});vanilla.installed(std::monostate{});
+   vanilla.committed(InstalledInstance{"vanilla","Vanilla","1.21.1","D:/v","1.21.1","D:/java.exe"});
+   if(v.snapshot().phase!=ImportPhase::Succeeded)return 33;
+   v.setLaunchActive(true);if(v.installVanilla("26.2"))return 34;
+ }
  std::cout<<"phase ordering, failure/cancel, stale callbacks, commit and selection passed\n";
 }

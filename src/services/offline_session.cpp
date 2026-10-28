@@ -65,6 +65,8 @@ QtGameProcess::QtGameProcess(QString root, QObject* parent) : QObject(parent), r
     connect(&game_, &QProcess::finished, this, [this](int code, QProcess::ExitStatus status) {
         finish(status == QProcess::NormalExit, code);
     });
+    connect(&game_, &QProcess::readyReadStandardOutput, this, [this] { captureOutput(false); });
+    connect(&game_, &QProcess::readyReadStandardError, this, [this] { captureOutput(true); });
 }
 bool QtGameProcess::selectRoot(const QString& root)
 {
@@ -91,26 +93,59 @@ void QtGameProcess::start(const QString&, const core::LaunchPlan& plan, const Of
     if (!lock_->tryLock(0)) { fail(GameProcessError::Busy); return; }
     if (!prepareLocalGameDirectories(root_)) { fail(GameProcessError::UnsafeDirectory); return; }
     logBase_ = data.filePath("launcher-logs/" + QUuid::createUuid().toString(QUuid::WithoutBraces));
+    stdoutBuffer_.clear(); stderrBuffer_.clear(); logFailed_ = false;
+    stdoutLog_.setFileName(logBase_ + ".stdout.log"); stderrLog_.setFileName(logBase_ + ".stderr.log");
+    if (!stdoutLog_.open(QIODevice::WriteOnly | QIODevice::NewOnly) || !stderrLog_.open(QIODevice::WriteOnly | QIODevice::NewOnly)) {
+        fail(GameProcessError::ReportFailed); return;
+    }
     auto environment = QProcessEnvironment::systemEnvironment();
     for (const auto* key : {"JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "_JAVA_OPTIONS", "CLASSPATH"}) environment.remove(QLatin1String(key));
     game_.setProcessEnvironment(environment);
     game_.setWorkingDirectory(data.filePath("game"));
-    game_.setStandardOutputFile(logBase_ + ".stdout.log");
-    game_.setStandardErrorFile(logBase_ + ".stderr.log");
     startTimeout_.start(10000);
     game_.start(QString::fromStdWString(plan.runtime.executable.wstring()), identity.arguments);
+}
+void QtGameProcess::captureOutput(bool standardError, bool final)
+{
+    auto& buffer = standardError ? stderrBuffer_ : stdoutBuffer_;
+    auto& file = standardError ? stderrLog_ : stdoutLog_;
+    buffer.append(standardError ? game_.readAllStandardError() : game_.readAllStandardOutput());
+    qsizetype overlap = 0;
+    for (const auto& secret : identity_.redactions) overlap = qMax(overlap, secret.toUtf8().size() - 1);
+    const auto limit = final ? buffer.size() : qMax(qsizetype(0), buffer.size() - overlap);
+    QByteArray clean;
+    qsizetype cursor = 0;
+    while (cursor < limit) {
+        qsizetype found = -1, length = 0;
+        for (const auto& secret : identity_.redactions) {
+            const auto bytes = secret.toUtf8();
+            if (bytes.isEmpty()) continue;
+            const auto at = buffer.indexOf(bytes, cursor);
+            if (at >= 0 && at < limit && (found < 0 || at < found || (at == found && bytes.size() > length))) { found = at; length = bytes.size(); }
+        }
+        if (found < 0) { clean.append(buffer.mid(cursor, limit - cursor)); cursor = limit; }
+        else { clean.append(buffer.mid(cursor, found - cursor)); clean.append("[REDACTED]"); cursor = found + length; }
+    }
+    buffer.remove(0, cursor);
+    if (!clean.isEmpty() && (!file.isOpen() || file.write(clean) != clean.size())) logFailed_ = true;
 }
 void QtGameProcess::finish(bool normal, int exitCode)
 {
     if (!observer_) return;
     startTimeout_.stop();
+    captureOutput(false, true); captureOutput(true, true);
+    if (!stdoutLog_.flush() || !stderrLog_.flush()) logFailed_ = true;
+    stdoutLog_.close(); stderrLog_.close();
     QSaveFile report(logBase_ + ".json");
-    const auto bytes = QJsonDocument(QJsonObject{{"mode", "offline-gui"}, {"authenticated", false}, {"demo", false},
-        {"playerName", identity_.playerName}, {"offlineUuid", identity_.uuid},
-        {"exitCode", exitCode}, {"normalExit", normal}}).toJson();
-    const bool saved = report.open(QIODevice::WriteOnly) && report.write(bytes) == bytes.size() && report.commit();
+    QJsonObject summary{{"mode", identity_.authenticated ? "authenticated-gui" : "offline-gui"}, {"authenticated", identity_.authenticated}, {"demo", false},
+        {"playerName", identity_.playerName},
+        {"exitCode", exitCode}, {"normalExit", normal}};
+    if (!identity_.authenticated) summary.insert("offlineUuid", identity_.uuid);
+    const auto bytes = QJsonDocument(summary).toJson();
+    const bool saved = !logFailed_ && report.open(QIODevice::WriteOnly) && report.write(bytes) == bytes.size() && report.commit();
     auto callback = std::move(observer_);
     observer_ = {};
+    identity_ = {}; game_.setArguments({});
     lock_.reset();
     callback({normal && exitCode == 0 && saved ? GameProcessEvent::Kind::Finished : GameProcessEvent::Kind::Failed,
               logBase_, exitCode, saved ? GameProcessError::AbnormalExit : GameProcessError::ReportFailed});
@@ -121,6 +156,8 @@ void QtGameProcess::fail(GameProcessError error)
     startTimeout_.stop();
     auto callback = std::move(observer_);
     observer_ = {};
+    stdoutLog_.close(); stderrLog_.close();
+    stdoutBuffer_.clear(); stderrBuffer_.clear(); identity_ = {}; game_.setArguments({});
     lock_.reset();
     callback({GameProcessEvent::Kind::Failed, logBase_, 0, error});
 }

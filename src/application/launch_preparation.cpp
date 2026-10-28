@@ -51,6 +51,7 @@ bool LaunchPreparation::start(const QString& instanceId)
     state_.taskId = QUuid::createUuid().toString(QUuid::WithoutBraces);
     state_.instanceId = instanceId;
     input_.reset();
+    taskMemoryMb_ = memoryMb_;
     candidates_.clear();
     candidateIndex_ = 0;
     operationId_.clear();
@@ -80,6 +81,7 @@ void LaunchPreparation::inputArrived(const QString& taskId, LaunchInputResult re
     if (!isCurrent(taskId, PreparationPhase::LoadingInput)) { return; }
     if (const auto error = std::get_if<PreparationError>(&result)) { fail(taskId, *error); return; }
     input_ = std::get<LaunchInput>(std::move(result));
+    if (taskMemoryMb_ > 0) input_->context.maximumMemoryMiB = static_cast<std::uint32_t>(taskMemoryMb_);
     input_->context.runtimes.clear();
     input_->context.manualRuntime.reset();
     const auto requirement = core::selectJavaRuntime(input_->version.java, {});

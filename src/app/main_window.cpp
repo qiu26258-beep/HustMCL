@@ -100,7 +100,11 @@ MainWindow::MainWindow(application::FrontendGateway* gateway, Mode mode, QWidget
         m_gateway->requestPrimaryAction();
     });
     connect(m_home, &ui::HomePage::installRequested, this, [this]() {
-        setCurrentPage(Page::Install);
+        if (m_mode == Mode::Demo) {
+            setCurrentPage(Page::Install);
+            return;
+        }
+        m_home->focusVanillaInstaller();
     });
     connect(m_home, &ui::HomePage::settingsRequested, this, [this]() {
         if (m_mode == Mode::Real) {
@@ -146,6 +150,18 @@ MainWindow::MainWindow(application::FrontendGateway* gateway, Mode mode, QWidget
             m_modpackController->selectInstance(instanceId);
         }
     });
+    connect(m_home, &ui::HomePage::vanillaInstallRequested,
+            this, [this](const QString& version) {
+        if (m_modpackController) {
+            m_modpackController->installVanilla(version);
+        }
+    });
+    connect(m_home, &ui::HomePage::vanillaVersionsReloadRequested,
+            this, [this]() {
+        if (m_modpackController) {
+            m_modpackController->loadVanillaVersions();
+        }
+    });
     if (m_install) {
         connect(m_install, &ui::InstallPage::cancelRequested,
                 this, [this](const QString& taskId) {
@@ -168,6 +184,9 @@ MainWindow::MainWindow(application::FrontendGateway* gateway, Mode mode, QWidget
     }
     connect(m_settings, &ui::SettingsPage::saveNameRequested,
             this, [this](const QString& name) {
+        if (!m_homeSnapshot.offlineMode) {
+            return;
+        }
         if (m_homeSnapshot.sessionActive) {
             m_settings->setSaveResult(
                 false, QStringLiteral("游戏运行中不能修改离线身份，请先退出游戏。"));
@@ -177,8 +196,7 @@ MainWindow::MainWindow(application::FrontendGateway* gateway, Mode mode, QWidget
         if (accepted) {
             m_settings->setSaveResult(
                 true,
-                QStringLiteral("已应用，本次启动器打开期间生效；"
-                               "重新打开启动器后需要重新设置。"));
+                QStringLiteral("已应用，本次启动器打开期间生效。"));
             refreshFromGateway();
         } else {
             m_settings->setSaveResult(
@@ -186,6 +204,27 @@ MainWindow::MainWindow(application::FrontendGateway* gateway, Mode mode, QWidget
                 QStringLiteral("离线名无效：仅支持 1–16 位英文字母、数字或下划线，"
                                "不能使用中文或空格。"));
         }
+    });
+    connect(m_settings, &ui::SettingsPage::signInRequested, this, [this]() {
+        if (m_homeSnapshot.offlineMode || m_homeSnapshot.sessionActive
+            || m_homeSnapshot.account.busy || !m_homeSnapshot.account.canSignIn) {
+            return;
+        }
+        m_gateway->requestSignIn();
+    });
+    connect(m_settings, &ui::SettingsPage::cancelSignInRequested, this, [this]() {
+        if (m_homeSnapshot.offlineMode || m_homeSnapshot.sessionActive
+            || !m_homeSnapshot.account.busy) {
+            return;
+        }
+        m_gateway->requestCancelSignIn();
+    });
+    connect(m_settings, &ui::SettingsPage::signOutRequested, this, [this]() {
+        if (m_homeSnapshot.offlineMode || m_homeSnapshot.sessionActive
+            || m_homeSnapshot.account.busy || !m_homeSnapshot.account.canSignOut) {
+            return;
+        }
+        m_gateway->requestSignOut();
     });
     connect(m_logs, &ui::LogsPage::openLogFolderRequested, this, [this]() {
         if (m_homeSnapshot.logPath.isEmpty()) {
@@ -447,7 +486,7 @@ void MainWindow::showDemoMessage(const QString& action)
     QMessageBox::information(
         this,
         heading,
-        QStringLiteral("真实登录、下载与游戏启动尚未接入。\n当前窗口只演示页面状态与交互反馈。"));
+        QStringLiteral("当前窗口只演示页面状态与交互反馈，不执行真实账号、下载或游戏启动操作。"));
 }
 
 void MainWindow::applyHomeSnapshot(const application::HomeSnapshot& snapshot)
@@ -457,7 +496,7 @@ void MainWindow::applyHomeSnapshot(const application::HomeSnapshot& snapshot)
     m_homeSnapshot = snapshot;
     m_home->setSnapshot(snapshot);
     m_home->setTaskSnapshot(m_installSnapshot.task);
-    m_sidebar->setAccount(snapshot.account);
+    m_sidebar->setAccount(snapshot.account, snapshot.offlineMode);
     m_settings->setSnapshot(snapshot);
     if (m_checks) {
         m_checks->setSnapshot(snapshot, m_installSnapshot.task);

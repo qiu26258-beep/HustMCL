@@ -5,6 +5,8 @@
 #include "hustmcl/application/offline_controller.h"
 #include "hustmcl/services/java_probe.h"
 #include "hustmcl/services/offline_session.h"
+#include "hustmcl/services/json_settings_store.h"
+#include "hustmcl/services/account_service.h"
 #include "hustmcl/application/content_market.h"
 #include "hustmcl/services/modrinth_content.h"
 #include "hustmcl/services/content_download_store.h"
@@ -17,6 +19,7 @@
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QDir>
+#include <QDesktopServices>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QScreen>
@@ -102,7 +105,7 @@ int main(int argc, char** argv)
     const QDir base(QCoreApplication::applicationDirPath());
     QCommandLineParser parser;
     parser.setApplicationDescription(
-        QStringLiteral("HustMCL local offline launcher. Demo data is available only "
+        QStringLiteral("HustMCL Minecraft Java launcher. Demo data is available only "
                        "with an explicit --scenario."));
     parser.addHelpOption();
     parser.addVersionOption();
@@ -133,6 +136,7 @@ int main(int argc, char** argv)
         QStringLiteral("Offline player name (1-16 ASCII letters, digits or underscores)."),
         QStringLiteral("name"),
         QStringLiteral("HustPlayer"));
+    QCommandLineOption offlineOption(QStringLiteral("offline"), QStringLiteral("Explicit local offline identity; does not use a Microsoft account."));
     QCommandLineOption pageOption(
         QStringLiteral("page"),
         QStringLiteral("Initial page: auto, home, checks, install, settings, logs or market."),
@@ -162,6 +166,7 @@ int main(int argc, char** argv)
     parser.addOption(javaOption);
     parser.addOption(gameVersionOption);
     parser.addOption(usernameOption);
+    parser.addOption(offlineOption);
     parser.addOption(pageOption);
     parser.addOption(screenshotOption);
     parser.addOption(nativeScreenshotOption);
@@ -320,11 +325,24 @@ int main(int argc, char** argv)
     hustmcl::services::QtJavaProbe probe;
     hustmcl::application::LaunchPreparation preparation(source, probe);
     hustmcl::services::QtGameProcess process(dataRoot);
+    hustmcl::services::JsonSettingsStore settingsStore(QDir(dataRoot).filePath(QStringLiteral("settings.json")));
+    hustmcl::services::QtAccountService accountService;
+    hustmcl::services::DpapiCredentialStore credentialStore(QDir(dataRoot).filePath(QStringLiteral("credentials/microsoft.dpapi")));
+    hustmcl::application::AccountController account(accountService, credentialStore);
     hustmcl::application::OfflineController controller(
         preparation, process, dataRoot, gameVersion);
-    if (!controller.setPlayerName(username)) {
+    if (const auto stored = settingsStore.load()) controller.applySettings(*stored);
+    // An explicit --username wins over the stored name for this run; it is only saved if the user later edits settings.
+    if (parser.isSet(usernameOption) && !controller.setPlayerName(username)) {
         std::fprintf(stderr, "invalid offline player name\n");
         return 2;
+    }
+    controller.setSettingsStore(&settingsStore);
+    QObject::connect(&accountService, &hustmcl::services::QtAccountService::authorizationRequired, &accountService,
+        [&accountService](const QUrl& url) { if (!QDesktopServices::openUrl(url)) accountService.browserFailed(); });
+    if (!parser.isSet(offlineOption)) {
+        controller.setAccountController(&account);
+        if (!wantsScreenshot) QTimer::singleShot(0, &account, &hustmcl::application::AccountController::restore);
     }
     hustmcl::services::ModrinthContentSource contentSource({});
     hustmcl::services::QtFileAcquirer contentAcquirer({30000, false});
@@ -333,6 +351,7 @@ int main(int argc, char** argv)
     hustmcl::services::QtModpackWorkspace workspace(dataRoot, javaPath, {});
     hustmcl::application::ModpackController modpacks(workspace,
         {gameVersion, QStringLiteral("我的原版世界"), gameVersion, dataRoot, gameVersion, javaPath});
+    if (!wantsScreenshot) QTimer::singleShot(0, &modpacks, &hustmcl::application::ModpackController::loadVanillaVersions);
     QObject::connect(&controller, &hustmcl::application::FrontendGateway::homeChanged, &modpacks,
         [&modpacks](const auto& home) { modpacks.setLaunchActive(home.sessionActive); });
     QObject::connect(&modpacks, &hustmcl::application::ModpackController::changed, &controller,

@@ -20,7 +20,7 @@ ChecksPage::ChecksPage(QWidget* parent)
     : PageScaffold(parent)
 {
     header()->setContent(QStringLiteral("实例与检查"),
-                         QStringLiteral("本地离线实例与启动前检查"), QString());
+                         QStringLiteral("游戏实例与启动前检查"), QString());
 
     m_content = new QWidget;
     auto* contentLayout = new QVBoxLayout(m_content);
@@ -171,12 +171,15 @@ void ChecksPage::setSnapshot(const application::HomeSnapshot& home,
     m_task = task;
 
     const QString instanceName = home.instance.displayName.isEmpty()
-        ? QStringLiteral("本地离线实例")
+        ? (home.offlineMode ? QStringLiteral("本地离线实例") : QStringLiteral("尚未安装实例"))
         : home.instance.displayName;
-    QString subtitle = QStringLiteral("%1 · 本地离线").arg(instanceName);
+    const QString edition = home.instance.editionLabel.isEmpty()
+        ? (home.offlineMode ? QStringLiteral("本地离线") : QStringLiteral("正版账号"))
+        : home.instance.editionLabel;
+    QString subtitle = QStringLiteral("%1 · %2").arg(instanceName, edition);
     if (!home.instance.versionLabel.isEmpty()) {
-        subtitle = QStringLiteral("%1 · Minecraft %2 · 本地离线")
-                       .arg(instanceName, home.instance.versionLabel);
+        subtitle = QStringLiteral("%1 · Minecraft %2 · %3")
+                       .arg(instanceName, home.instance.versionLabel, edition);
     }
     header()->setContent(QStringLiteral("实例与检查"), subtitle,
                          home.statusTitle.isEmpty()
@@ -184,12 +187,15 @@ void ChecksPage::setSnapshot(const application::HomeSnapshot& home,
                              : home.statusTitle);
 
     const QString identityName = home.account.displayName.isEmpty()
-        ? QStringLiteral("未设置")
+        ? (home.offlineMode ? QStringLiteral("未设置") : QStringLiteral("尚未登录"))
         : home.account.displayName;
+    const bool identityReady = home.offlineMode
+        ? home.account.state == application::AccountState::Offline
+        : home.account.state == application::AccountState::SignedIn;
     m_identityRow->setData(
-        QStringLiteral("离线身份"), identityName,
+        home.offlineMode ? QStringLiteral("离线身份") : QStringLiteral("账号"), identityName,
         copy::accountStateText(home.account.state),
-        home.account.state == application::AccountState::Offline);
+        identityReady);
 
     QString javaValue = home.environment.versionLabel;
     if (!home.environment.architectureLabel.isEmpty()) {

@@ -29,11 +29,15 @@ if(HUSTMCL_BUILD_DESKTOP OR HUSTMCL_BUILD_BACKEND)
     target_include_directories(hustmcl_miniz PUBLIC ${PROJECT_SOURCE_DIR}/third_party/miniz)
     target_compile_definitions(hustmcl_miniz PUBLIC MINIZ_NO_DEFLATE_APIS MINIZ_NO_ZLIB_COMPATIBLE_NAMES)
     add_library(hustmcl_runtime STATIC
+        account_service.cpp
+        credential_store.cpp
+        include/hustmcl/services/account_service.h
         java_probe.cpp
         launch_input_source.cpp
         install_plan_input.cpp
         local_game.cpp
         offline_session.cpp
+        json_settings_store.cpp
         file_acquirer.cpp
         modrinth_content.cpp
         content_download_store.cpp
@@ -47,6 +51,8 @@ if(HUSTMCL_BUILD_DESKTOP OR HUSTMCL_BUILD_BACKEND)
     target_include_directories(hustmcl_runtime PUBLIC include)
     target_link_libraries(hustmcl_runtime PUBLIC hustmcl_application PRIVATE hustmcl_metadata Qt6::Core)
     target_link_libraries(hustmcl_runtime PRIVATE Qt6::Network)
+    target_link_libraries(hustmcl_runtime PRIVATE crypt32)
+    set_target_properties(hustmcl_runtime PROPERTIES AUTOMOC ON)
     target_link_libraries(hustmcl_runtime PRIVATE hustmcl_miniz)
     target_compile_features(hustmcl_runtime PUBLIC cxx_std_20)
     set_target_properties(hustmcl_runtime PROPERTIES CXX_EXTENSIONS OFF)
@@ -57,6 +63,10 @@ if(HUSTMCL_BUILD_DESKTOP OR HUSTMCL_BUILD_BACKEND)
     endif()
 
     if(BUILD_TESTING)
+        add_executable(account_service_tests ${PROJECT_SOURCE_DIR}/tests/services/account_service_tests.cpp)
+        target_link_libraries(account_service_tests PRIVATE hustmcl_runtime Qt6::Network)
+        add_test(NAME services.account COMMAND account_service_tests)
+        set_tests_properties(services.account PROPERTIES TIMEOUT 20)
         add_executable(modpack_workspace_tests ${PROJECT_SOURCE_DIR}/tests/services/modpack_workspace_tests.cpp)
         target_link_libraries(modpack_workspace_tests PRIVATE hustmcl_runtime Qt6::Network)
         target_compile_definitions(modpack_workspace_tests PRIVATE HUSTMCL_FIXTURE_DIR="${PROJECT_SOURCE_DIR}/tests/fixtures/metadata")
@@ -79,6 +89,10 @@ if(HUSTMCL_BUILD_DESKTOP OR HUSTMCL_BUILD_BACKEND)
         set_tests_properties(services.content_market PROPERTIES TIMEOUT 30)
         add_executable(game_process_fixture ${PROJECT_SOURCE_DIR}/tests/services/game_process_fixture.cpp)
         target_link_libraries(game_process_fixture PRIVATE Qt6::Core)
+        add_executable(json_settings_store_tests ${PROJECT_SOURCE_DIR}/tests/services/json_settings_store_tests.cpp)
+        target_link_libraries(json_settings_store_tests PRIVATE hustmcl_runtime)
+        add_test(NAME services.json_settings_store COMMAND json_settings_store_tests)
+        set_tests_properties(services.json_settings_store PROPERTIES TIMEOUT 15)
         add_executable(offline_session_tests ${PROJECT_SOURCE_DIR}/tests/services/offline_session_tests.cpp)
         target_link_libraries(offline_session_tests PRIVATE hustmcl_runtime)
         add_test(NAME services.offline_session COMMAND offline_session_tests $<TARGET_FILE:game_process_fixture>)

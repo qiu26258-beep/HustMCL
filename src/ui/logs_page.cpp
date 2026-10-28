@@ -18,7 +18,7 @@ LogsPage::LogsPage(QWidget* parent)
 {
     header()->setContent(QStringLiteral("日志与错误"),
                          QStringLiteral("最近一次启动状态、错误与日志位置"),
-                         QStringLiteral("本地离线"));
+                         QString());
 
     auto* content = new QWidget;
     auto* layout = new QVBoxLayout(content);
@@ -154,7 +154,9 @@ void LogsPage::setSnapshot(const application::HomeSnapshot& home,
 {
     m_home = home;
     const QString status = home.statusTitle.isEmpty()
-        ? (home.sessionActive ? QStringLiteral("游戏运行中") : QStringLiteral("本地离线待启动"))
+        ? (home.sessionActive ? QStringLiteral("游戏运行中")
+                              : (home.offlineMode ? QStringLiteral("本地离线待启动")
+                                                  : QStringLiteral("等待账号就绪")))
         : home.statusTitle;
     header()->setContent(
         QStringLiteral("日志与错误"),
@@ -166,11 +168,12 @@ void LogsPage::setSnapshot(const application::HomeSnapshot& home,
                                 ? QStringLiteral("正在读取当前状态。")
                                 : home.primaryReason);
     const QString name = home.account.displayName.isEmpty()
-        ? QStringLiteral("本地玩家")
+        ? (home.offlineMode ? QStringLiteral("本地玩家") : QStringLiteral("尚未登录"))
         : home.account.displayName;
     m_identity->setText(
-        QStringLiteral("离线身份：%1 · %2")
-            .arg(name, copy::accountStateText(home.account.state)));
+        QStringLiteral("%1：%2 · %3")
+            .arg(home.offlineMode ? QStringLiteral("离线身份") : QStringLiteral("账号"),
+                 name, copy::accountStateText(home.account.state)));
 
     const bool hasError = task.error.has_value();
     m_errorNotice->setVisible(hasError);

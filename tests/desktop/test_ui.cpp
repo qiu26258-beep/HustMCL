@@ -314,11 +314,25 @@ application::InstalledInstance bundledModpackInstance()
             QStringLiteral("26.2"), QStringLiteral("D:\\HustMCL\\runtime\\bin\\java.exe")};
 }
 
+core::Modpack vanillaModpack(const QString& version)
+{
+    core::Modpack pack;
+    pack.name = QStringLiteral("Minecraft %1").arg(version).toStdString();
+    pack.version = version.toStdString();
+    pack.minecraft = version.toStdString();
+    pack.loader = core::PackLoader::Vanilla;
+    return pack;
+}
+
 class FakeModpackWorkspace final : public application::ModpackWorkspace {
 public:
     struct InspectCall {
         QString taskId;
         QString archive;
+    };
+    struct VanillaInspectCall {
+        QString taskId;
+        QString version;
     };
 
     void inspect(const QString& taskId, const QString& archive,
@@ -326,6 +340,23 @@ public:
     {
         inspectCalls.push_back({taskId, archive});
         pendingInspect = std::move(complete);
+    }
+
+    void inspectVanilla(const QString& taskId, const QString& version,
+                        std::function<void(application::ImportResult<core::Modpack>)> complete) override
+    {
+        vanillaInspectCalls.push_back({taskId, version});
+        pendingVanillaInspect = std::move(complete);
+    }
+
+    void listVanillaVersions(
+        std::function<void(application::ImportResult<QStringList>)> complete) override
+    {
+        ++vanillaListCalls;
+        pendingVanillaList = std::move(complete);
+        if (autoCompleteVanillaVersions) {
+            complete(vanillaVersions);
+        }
     }
 
     void prepareGame(const QString&, Progress progress, Done complete) override
@@ -366,6 +397,30 @@ public:
         complete(application::ImportFailure{error, context});
     }
 
+    void completeVanillaInspect(const core::Modpack& pack)
+    {
+        auto complete = std::move(pendingVanillaInspect);
+        complete(pack);
+    }
+
+    void failVanillaInspect(application::ImportError error, const QString& context = {})
+    {
+        auto complete = std::move(pendingVanillaInspect);
+        complete(application::ImportFailure{error, context});
+    }
+
+    void completeVanillaVersions(const QStringList& versions)
+    {
+        auto complete = std::move(pendingVanillaList);
+        complete(versions);
+    }
+
+    void failVanillaVersions(application::ImportError error, const QString& context = {})
+    {
+        auto complete = std::move(pendingVanillaList);
+        complete(application::ImportFailure{error, context});
+    }
+
     void completePrepare()
     {
         auto complete = std::move(pendingPrepare);
@@ -397,14 +452,20 @@ public:
     }
 
     std::vector<InspectCall> inspectCalls;
+    std::vector<VanillaInspectCall> vanillaInspectCalls;
     std::vector<application::InstalledInstance> installed;
     std::function<void(application::ImportResult<core::Modpack>)> pendingInspect;
+    std::function<void(application::ImportResult<core::Modpack>)> pendingVanillaInspect;
+    std::function<void(application::ImportResult<QStringList>)> pendingVanillaList;
     Done pendingPrepare;
     Done pendingInstall;
     std::function<void(application::ImportResult<application::InstalledInstance>)> pendingCommit;
     Progress prepareProgress;
     Progress installProgress;
+    QStringList vanillaVersions;
+    bool autoCompleteVanillaVersions = false;
     int listCalls = 0;
+    int vanillaListCalls = 0;
     int cancelCalls = 0;
     int releaseCalls = 0;
 };
@@ -420,8 +481,12 @@ public:
         ++retryRequests;
         lastRetryId = taskId;
     }
+    void requestSignIn() override { ++signInRequests; }
+    void requestSignOut() override { ++signOutRequests; }
+    void requestCancelSignIn() override { ++cancelSignInRequests; }
     bool setPlayerName(const QString& name) override
     {
+        ++nameRequests;
         lastName = name;
         if (!acceptName) {
             return false;
@@ -444,6 +509,10 @@ public:
     bool acceptName = true;
     int primaryRequests = 0;
     int retryRequests = 0;
+    int signInRequests = 0;
+    int signOutRequests = 0;
+    int cancelSignInRequests = 0;
+    int nameRequests = 0;
 };
 
 application::HomeSnapshot realHomeSnapshot()
@@ -464,6 +533,30 @@ application::HomeSnapshot realHomeSnapshot()
     home.primaryLabel = QStringLiteral("启动游戏");
     home.primaryReason = QStringLiteral("启动前将校验本地文件并检测 Java。");
     home.statusTitle = QStringLiteral("从这里开启世界");
+    home.dataPath = QStringLiteral("D:\\HustMCL\\data");
+    home.launch = application::LaunchSummary{2048, true};
+    return home;
+}
+
+application::HomeSnapshot onlineHomeSnapshot()
+{
+    application::HomeSnapshot home;
+    home.offlineMode = false;
+    home.greeting = QStringLiteral("欢迎回到 HustMCL");
+    home.timeLabel = QStringLiteral("2026.10.27");
+    home.account = {application::AccountState::SignedOut, QString(),
+                    QStringLiteral("Microsoft")};
+    home.account.message = QStringLiteral("使用自己的微软账号登录后即可继续。");
+    home.instance = {QStringLiteral("campus-online"), QStringLiteral("校园正版"),
+                     QStringLiteral("1.21.4"), QStringLiteral("Java · 正版账号"),
+                     application::InstanceState::Ready};
+    home.environment = {application::JavaState::Unchecked, QStringLiteral("启动前检测"),
+                        QStringLiteral("x64"), QStringLiteral("随包运行时")};
+    home.primaryAction = application::PrimaryAction::SignIn;
+    home.primaryEnabled = true;
+    home.primaryLabel = QStringLiteral("登录微软账号");
+    home.primaryReason = QStringLiteral("登录成功只更新账号状态，游戏仍需手动启动。");
+    home.statusTitle = QStringLiteral("登录 Minecraft");
     home.dataPath = QStringLiteral("D:\\HustMCL\\data");
     home.launch = application::LaunchSummary{2048, true};
     return home;
@@ -513,6 +606,12 @@ private slots:
     void settingsAndLogsAreDisabled();
     void realModeUsesFivePagesAndOfflineIdentity();
     void realPrimaryLabelAndStatusTitleOverride();
+    void onlineAccountPanelShowsStatesAndActions();
+    void onlineAccountActionsForwardOnlyToGateway();
+    void onlineAccountControlsRejectDuringSession();
+    void offlineSettingsStayEditable();
+    void onlinePagesAvoidOfflineWording();
+    void onlineSettingsReadableAtBothSizes();
     void realOfflineControllerFailureShowsStableCode();
     void realSettingsDelegatesValidationToController();
     void realCloseDuringSessionKeepsOwnerAlive();
@@ -531,6 +630,11 @@ private slots:
     void homeImportShowsPhasesProgressAndCommitLock();
     void homeImportCancelsRetriesAndShowsError();
     void homeInstanceSelectionAndBusyLocks();
+    void homeVanillaVersionsLoadAndInstallIntent();
+    void homeVanillaVersionListFailureRetries();
+    void homeVanillaInstallLocksAndCancelsWithoutLaunch();
+    void homeVanillaInstallSuccessKeepsManualLaunch();
+    void homeVanillaInstallerReachableInNarrowWindow();
     void homeModpackControllerReplacementIgnoresOldController();
     void homeImportAcceptsNativeQtDropEvents();
     void homeImportRendersPackAndErrorContextAsPlainText();
@@ -1012,6 +1116,342 @@ void TestUi::realPrimaryLabelAndStatusTitleOverride()
              QStringLiteral("本地离线"));
 }
 
+void TestUi::onlineAccountPanelShowsStatesAndActions()
+{
+    hustmcl::ui::SettingsPage page;
+    page.resize(1120, 720);
+    page.show();
+    QCoreApplication::processEvents();
+
+    auto* panel = page.findChild<QWidget*>(QStringLiteral("AccountPanel"));
+    auto* offlineSection = page.findChild<QWidget*>(QStringLiteral("OfflineIdentitySection"));
+    auto* input = page.findChild<QLineEdit*>(QStringLiteral("PlayerNameInput"));
+    auto* name = page.findChild<QLabel*>(QStringLiteral("SettingsAccountName"));
+    auto* meta = page.findChild<QLabel*>(QStringLiteral("SettingsAccountState"));
+    auto* message = page.findChild<QLabel*>(QStringLiteral("AccountMessage"));
+    auto* signIn = page.findChild<QPushButton*>(QStringLiteral("AccountSignIn"));
+    auto* cancel = page.findChild<QPushButton*>(QStringLiteral("AccountCancelSignIn"));
+    auto* signOut = page.findChild<QPushButton*>(QStringLiteral("AccountSignOut"));
+    QVERIFY(panel);
+    QVERIFY(offlineSection);
+    QVERIFY(input);
+    QVERIFY(name);
+    QVERIFY(meta);
+    QVERIFY(message);
+    QVERIFY(signIn);
+    QVERIFY(cancel);
+    QVERIFY(signOut);
+
+    application::HomeSnapshot home = onlineHomeSnapshot();
+    page.setSnapshot(home);
+    QCoreApplication::processEvents();
+
+    QVERIFY(panel->isVisible());
+    QVERIFY(!offlineSection->isVisible());
+    QVERIFY(!input->isVisible());
+    QCOMPARE(signIn->text(), QStringLiteral("登录微软账号"));
+    QVERIFY(signIn->isEnabled());
+    QVERIFY(cancel->isVisible());
+    QVERIFY(!cancel->isEnabled());
+    QVERIFY(signOut->isVisible());
+    QVERIFY(!signOut->isEnabled());
+    QCOMPARE(name->text(), QStringLiteral("尚未登录"));
+    QVERIFY(meta->text().contains(QStringLiteral("未登录")));
+    QVERIFY(meta->text().contains(QStringLiteral("Microsoft")));
+    QVERIFY(message->isVisible());
+    QCOMPARE(message->text(), home.account.message);
+
+    home.account.state = application::AccountState::SigningIn;
+    home.account.busy = true;
+    home.account.canSignIn = false;
+    home.account.canSignOut = false;
+    home.account.message = QStringLiteral("请在浏览器中完成微软账号授权。");
+    page.setSnapshot(home);
+    QCoreApplication::processEvents();
+
+    QCOMPARE(signIn->text(), QStringLiteral("登录中…"));
+    QVERIFY(!signIn->isEnabled());
+    QVERIFY(cancel->isEnabled());
+    QVERIFY(!signOut->isEnabled());
+    QVERIFY(meta->text().contains(QStringLiteral("登录中")));
+    QVERIFY(message->isVisible());
+    QVERIFY(message->text().contains(QStringLiteral("浏览器")));
+
+    home.account.state = application::AccountState::SignedIn;
+    home.account.busy = false;
+    home.account.canSignIn = true;
+    home.account.canSignOut = true;
+    home.account.displayName = QStringLiteral("Steve");
+    home.account.providerLabel = QStringLiteral("Microsoft");
+    home.account.message = QStringLiteral("已登录，可以开始游戏。");
+    page.setSnapshot(home);
+    QCoreApplication::processEvents();
+
+    QCOMPARE(signIn->text(), QStringLiteral("重新登录"));
+    QVERIFY(signIn->isEnabled());
+    QVERIFY(signOut->isEnabled());
+    QVERIFY(!cancel->isEnabled());
+    QCOMPARE(name->text(), QStringLiteral("Steve"));
+    QVERIFY(meta->text().contains(QStringLiteral("已连接")));
+    QVERIFY(message->text().contains(QStringLiteral("已登录")));
+
+    home.account.state = application::AccountState::Error;
+    home.account.canSignIn = true;
+    home.account.canSignOut = false;
+    home.account.message = QStringLiteral("登录失败，请稍后重试。");
+    page.setSnapshot(home);
+    QCoreApplication::processEvents();
+
+    QVERIFY(meta->text().contains(QStringLiteral("登录异常")));
+    QVERIFY(signIn->isEnabled());
+    QVERIFY(!signOut->isEnabled());
+    QVERIFY(message->isVisible());
+    QVERIFY(message->text().contains(QStringLiteral("登录失败")));
+    QVERIFY(message->property("error").toBool());
+}
+
+void TestUi::onlineAccountActionsForwardOnlyToGateway()
+{
+    UiGateway gateway;
+    gateway.home = onlineHomeSnapshot();
+    gateway.home.account.state = application::AccountState::SignedIn;
+    gateway.home.account.displayName = QStringLiteral("Steve");
+    gateway.home.account.canSignIn = true;
+    gateway.home.account.canSignOut = true;
+    gateway.home.account.message = QStringLiteral("已登录，可以开始游戏。");
+
+    hustmcl::app::MainWindow window(&gateway, hustmcl::app::MainWindow::Mode::Real);
+    window.show();
+    window.setCurrentPage(hustmcl::app::MainWindow::Page::Settings);
+    QCoreApplication::processEvents();
+
+    auto* signIn = window.settingsPage()->findChild<QPushButton*>(
+        QStringLiteral("AccountSignIn"));
+    auto* cancel = window.settingsPage()->findChild<QPushButton*>(
+        QStringLiteral("AccountCancelSignIn"));
+    auto* signOut = window.settingsPage()->findChild<QPushButton*>(
+        QStringLiteral("AccountSignOut"));
+    QVERIFY(signIn);
+    QVERIFY(cancel);
+    QVERIFY(signOut);
+
+    signIn->click();
+    QCoreApplication::processEvents();
+    QCOMPARE(gateway.signInRequests, 1);
+    QCOMPARE(gateway.primaryRequests, 0);
+    QCOMPARE(gateway.nameRequests, 0);
+
+    signOut->click();
+    QCoreApplication::processEvents();
+    QCOMPARE(gateway.signOutRequests, 1);
+    QCOMPARE(gateway.signInRequests, 1);
+    QCOMPARE(gateway.primaryRequests, 0);
+    QCOMPARE(gateway.nameRequests, 0);
+
+    QVERIFY(!cancel->isEnabled());
+    cancel->click();
+    QCOMPARE(gateway.cancelSignInRequests, 0);
+
+    gateway.home.account.state = application::AccountState::SigningIn;
+    gateway.home.account.busy = true;
+    gateway.home.account.canSignIn = false;
+    gateway.home.account.canSignOut = false;
+    gateway.home.account.message = QStringLiteral("请在浏览器中完成微软账号授权。");
+    gateway.publish();
+    QCoreApplication::processEvents();
+
+    QVERIFY(cancel->isEnabled());
+    cancel->click();
+    QCoreApplication::processEvents();
+    QCOMPARE(gateway.cancelSignInRequests, 1);
+    QCOMPARE(gateway.primaryRequests, 0);
+    QCOMPARE(gateway.nameRequests, 0);
+}
+
+void TestUi::onlineAccountControlsRejectDuringSession()
+{
+    UiGateway gateway;
+    gateway.home = onlineHomeSnapshot();
+    gateway.home.account.state = application::AccountState::SignedIn;
+    gateway.home.account.displayName = QStringLiteral("Steve");
+    gateway.home.account.canSignIn = true;
+    gateway.home.account.canSignOut = true;
+    gateway.home.account.message = QStringLiteral("已登录，可以开始游戏。");
+
+    hustmcl::app::MainWindow window(&gateway, hustmcl::app::MainWindow::Mode::Real);
+    window.show();
+    window.setCurrentPage(hustmcl::app::MainWindow::Page::Settings);
+    QCoreApplication::processEvents();
+
+    gateway.home.sessionActive = true;
+    gateway.home.primaryEnabled = false;
+    gateway.publish();
+    QCoreApplication::processEvents();
+
+    auto* signIn = window.settingsPage()->findChild<QPushButton*>(
+        QStringLiteral("AccountSignIn"));
+    auto* cancel = window.settingsPage()->findChild<QPushButton*>(
+        QStringLiteral("AccountCancelSignIn"));
+    auto* signOut = window.settingsPage()->findChild<QPushButton*>(
+        QStringLiteral("AccountSignOut"));
+    QVERIFY(signIn);
+    QVERIFY(cancel);
+    QVERIFY(signOut);
+    QVERIFY(!signIn->isEnabled());
+    QVERIFY(!cancel->isEnabled());
+    QVERIFY(!signOut->isEnabled());
+
+    signIn->click();
+    cancel->click();
+    signOut->click();
+    QCoreApplication::processEvents();
+    QCOMPARE(gateway.signInRequests, 0);
+    QCOMPARE(gateway.cancelSignInRequests, 0);
+    QCOMPARE(gateway.signOutRequests, 0);
+    QCOMPARE(gateway.primaryRequests, 0);
+    QVERIFY(joinedLabelText(*window.settingsPage()).contains(QStringLiteral("游戏运行中")));
+}
+
+void TestUi::offlineSettingsStayEditable()
+{
+    UiGateway gateway;
+    gateway.home = realHomeSnapshot();
+
+    hustmcl::app::MainWindow window(&gateway, hustmcl::app::MainWindow::Mode::Real);
+    window.show();
+    window.setCurrentPage(hustmcl::app::MainWindow::Page::Settings);
+    QCoreApplication::processEvents();
+
+    auto* input = window.settingsPage()->findChild<QLineEdit*>(
+        QStringLiteral("PlayerNameInput"));
+    auto* panel = window.settingsPage()->findChild<QWidget*>(
+        QStringLiteral("AccountPanel"));
+    auto* signIn = window.settingsPage()->findChild<QPushButton*>(
+        QStringLiteral("AccountSignIn"));
+    auto* bar = window.settingsPage()->findChild<hustmcl::ui::PrimaryActionBar*>();
+    QVERIFY(input);
+    QVERIFY(panel);
+    QVERIFY(signIn);
+    QVERIFY(bar);
+    QVERIFY(input->isVisible());
+    QVERIFY(input->isEnabled());
+    QVERIFY(!panel->isVisible());
+    QVERIFY(!signIn->isVisible());
+    QCOMPARE(bar->primaryButton()->text(), QStringLiteral("保存离线名"));
+
+    input->setText(QStringLiteral("Campus_Player"));
+    bar->primaryButton()->click();
+    QCoreApplication::processEvents();
+
+    QCOMPARE(gateway.nameRequests, 1);
+    QCOMPARE(gateway.lastName, QStringLiteral("Campus_Player"));
+    QCOMPARE(gateway.signInRequests, 0);
+    QCOMPARE(gateway.signOutRequests, 0);
+    QCOMPARE(gateway.cancelSignInRequests, 0);
+    QCOMPARE(gateway.primaryRequests, 0);
+
+    auto* success = window.settingsPage()->findChild<QLabel*>(
+        QStringLiteral("FieldSuccess"));
+    QVERIFY(success);
+    QVERIFY(success->isVisible());
+    QVERIFY(success->text().contains(QStringLiteral("本次启动器打开期间生效")));
+    QVERIFY(!success->text().contains(QStringLiteral("重开")));
+    QVERIFY(!success->text().contains(QStringLiteral("重新打开")));
+}
+
+void TestUi::onlinePagesAvoidOfflineWording()
+{
+    UiGateway gateway;
+    gateway.home = onlineHomeSnapshot();
+    gateway.home.account.state = application::AccountState::SignedIn;
+    gateway.home.account.displayName = QStringLiteral("Steve");
+    gateway.home.account.canSignIn = true;
+    gateway.home.account.canSignOut = true;
+    gateway.home.account.message = QStringLiteral("已登录，可以开始游戏。");
+
+    hustmcl::app::MainWindow window(&gateway, hustmcl::app::MainWindow::Mode::Real);
+    window.show();
+    QCoreApplication::processEvents();
+
+    auto* badge = window.findChild<QLabel*>(QStringLiteral("DemoBadge"));
+    auto* accountState = window.findChild<QLabel*>(QStringLiteral("AccountState"));
+    QVERIFY(badge);
+    QVERIFY(accountState);
+    QCOMPARE(badge->text(), QStringLiteral("微软账号"));
+    QCOMPARE(accountState->text(), QStringLiteral("已连接"));
+    const QString sidebarText = joinedLabelText(*window.sidebar());
+    QVERIFY(!sidebarText.contains(QStringLiteral("本地离线")));
+    QVERIFY(!sidebarText.contains(QStringLiteral("不是正版登录")));
+    QVERIFY(sidebarText.contains(QStringLiteral("已连接微软账号")));
+
+    const QString homeText = joinedLabelText(*window.homePage());
+    QVERIFY(!homeText.contains(QStringLiteral("离线身份")));
+    QVERIFY(!homeText.contains(QStringLiteral("本地离线")));
+    QVERIFY(homeText.contains(QStringLiteral("账号")));
+    QVERIFY(homeText.contains(QStringLiteral("Steve")));
+
+    window.setCurrentPage(hustmcl::app::MainWindow::Page::InstanceChecks);
+    QCoreApplication::processEvents();
+    const QString checksText = joinedLabelText(*window.checksPage());
+    QVERIFY(!checksText.contains(QStringLiteral("本地离线")));
+    QVERIFY(checksText.contains(QStringLiteral("账号")));
+    QVERIFY(checksText.contains(QStringLiteral("Steve")));
+
+    window.setCurrentPage(hustmcl::app::MainWindow::Page::Logs);
+    QCoreApplication::processEvents();
+    const QString logsText = joinedLabelText(*window.logsPage());
+    QVERIFY(!logsText.contains(QStringLiteral("离线身份")));
+    QVERIFY(!logsText.contains(QStringLiteral("本地离线")));
+    QVERIFY(logsText.contains(QStringLiteral("账号：Steve")));
+}
+
+void TestUi::onlineSettingsReadableAtBothSizes()
+{
+    UiGateway gateway;
+    gateway.home = onlineHomeSnapshot();
+    gateway.home.account.state = application::AccountState::SignedIn;
+    gateway.home.account.displayName = QStringLiteral("Steve");
+    gateway.home.account.canSignIn = true;
+    gateway.home.account.canSignOut = true;
+    gateway.home.account.message = QStringLiteral("已登录，可以开始游戏。");
+
+    hustmcl::app::MainWindow window(&gateway, hustmcl::app::MainWindow::Mode::Real);
+    window.show();
+    window.setCurrentPage(hustmcl::app::MainWindow::Page::Settings);
+    QCoreApplication::processEvents();
+
+    auto* settings = window.settingsPage();
+    auto* scroll = settings->scrollArea();
+    auto* panel = settings->findChild<QWidget*>(QStringLiteral("AccountPanel"));
+    auto* signIn = settings->findChild<QPushButton*>(QStringLiteral("AccountSignIn"));
+    QVERIFY(scroll);
+    QVERIFY(panel);
+    QVERIFY(signIn);
+
+    for (const QSize size : {QSize(1120, 720), QSize(840, 460)}) {
+        window.resize(size);
+        QCoreApplication::processEvents();
+        scroll->ensureWidgetVisible(signIn);
+        QCoreApplication::processEvents();
+
+        QVERIFY(panel->isVisible());
+        QVERIFY(signIn->isVisible());
+        QVERIFY(signIn->isEnabled());
+        const QRect buttonRect(signIn->mapTo(scroll->viewport(), QPoint(0, 0)),
+                               signIn->size());
+        QVERIFY(scroll->viewport()->rect().intersects(buttonRect));
+        QVERIFY(panel->width() <= scroll->viewport()->width());
+
+        const QString panelText = joinedLabelText(*panel);
+        QVERIFY(panelText.size() < 300);
+        QVERIFY(!panelText.contains(QStringLiteral("http")));
+        QVERIFY(!panelText.contains(QStringLiteral("requestSignIn")));
+        QVERIFY(!panelText.contains(QStringLiteral("验收")));
+        QVERIFY(!window.grab().isNull());
+    }
+}
+
+
 void TestUi::realOfflineControllerFailureShowsStableCode()
 {
     FakeInputSource source;
@@ -1100,7 +1540,8 @@ void TestUi::realSettingsDelegatesValidationToController()
     QVERIFY(settingsText.contains(QStringLiteral("2048 MB")));
     QVERIFY(settingsText.contains(QStringLiteral("26.2")));
     QVERIFY(settingsText.contains(QStringLiteral("D:\\HustMCL\\data")));
-    QVERIFY(settingsText.contains(QStringLiteral("未接入")));
+    QVERIFY(settingsText.contains(QStringLiteral("离线身份")));
+    QVERIFY(!settingsText.contains(QStringLiteral("重开需重新设置")));
 }
 
 void TestUi::realCloseDuringSessionKeepsOwnerAlive()
@@ -1872,6 +2313,327 @@ void TestUi::homeInstanceSelectionAndBusyLocks()
     QCoreApplication::processEvents();
     QVERIFY(!section->isVisible());
 }
+
+void TestUi::homeVanillaVersionsLoadAndInstallIntent()
+{
+    FakeModpackWorkspace workspace;
+    application::ModpackController controller(workspace, bundledModpackInstance());
+    UiGateway gateway;
+    gateway.home = onlineHomeSnapshot();
+
+    hustmcl::app::MainWindow window(&gateway, hustmcl::app::MainWindow::Mode::Real);
+    window.setModpackController(&controller);
+    window.show();
+    QCoreApplication::processEvents();
+
+    auto* home = window.homePage();
+    auto* section = home->findChild<QWidget*>(QStringLiteral("VanillaSection"));
+    auto* combo = home->findChild<QComboBox*>(QStringLiteral("VanillaVersionCombo"));
+    auto* error = home->findChild<QLabel*>(QStringLiteral("VanillaVersionsError"));
+    QVERIFY(section);
+    QVERIFY(combo);
+    QVERIFY(error);
+    QVERIFY(section->isVisible());
+    QCOMPARE(combo->count(), 1);
+    QCOMPARE(combo->itemText(0), QStringLiteral("暂无可用版本"));
+    QVERIFY(!combo->isEnabled());
+    QVERIFY(!error->isVisible());
+
+    auto* load = buttonWithText(*home, QStringLiteral("获取版本列表"));
+    QVERIFY(load);
+    QVERIFY(load->isEnabled());
+    load->click();
+    QCoreApplication::processEvents();
+    QCOMPARE(workspace.vanillaListCalls, 1);
+    QVERIFY(controller.snapshot().versionsLoading);
+    QCOMPARE(combo->itemText(0), QStringLiteral("正在获取版本列表…"));
+    auto* loadingButton = buttonWithText(*home, QStringLiteral("正在获取…"));
+    QVERIFY(loadingButton);
+    QVERIFY(!loadingButton->isEnabled());
+
+    workspace.completeVanillaVersions({QStringLiteral("1.21.4"), QStringLiteral("1.21.1")});
+    QCoreApplication::processEvents();
+    QVERIFY(!controller.snapshot().versionsLoading);
+    QCOMPARE(combo->count(), 2);
+    QCOMPARE(combo->itemText(0), QStringLiteral("1.21.4"));
+    QCOMPARE(combo->itemText(1), QStringLiteral("1.21.1"));
+    QVERIFY(combo->isEnabled());
+
+    auto* install = buttonWithText(*home, QStringLiteral("安装原版"));
+    QVERIFY(install);
+    QVERIFY(install->isEnabled());
+    combo->setCurrentIndex(1);
+    QCoreApplication::processEvents();
+    QCOMPARE(combo->currentData().toString(), QStringLiteral("1.21.1"));
+    install->click();
+    QCoreApplication::processEvents();
+
+    QCOMPARE(workspace.vanillaInspectCalls.size(), std::size_t(1));
+    QCOMPARE(workspace.vanillaInspectCalls.at(0).version, QStringLiteral("1.21.1"));
+    QCOMPARE(workspace.inspectCalls.size(), std::size_t(0));
+    QVERIFY(controller.snapshot().phase == application::ImportPhase::Inspecting);
+    QCOMPARE(controller.snapshot().vanillaVersion, QStringLiteral("1.21.1"));
+    QCOMPARE(gateway.primaryRequests, 0);
+    QVERIFY(joinedLabelText(*home).contains(QStringLiteral("Minecraft 1.21.1 原版")));
+    QVERIFY(!joinedLabelText(*home).contains(QStringLiteral("整合包路径")));
+}
+
+void TestUi::homeVanillaVersionListFailureRetries()
+{
+    FakeModpackWorkspace workspace;
+    application::ModpackController controller(workspace, bundledModpackInstance());
+    UiGateway gateway;
+    gateway.home = onlineHomeSnapshot();
+
+    hustmcl::app::MainWindow window(&gateway, hustmcl::app::MainWindow::Mode::Real);
+    window.setModpackController(&controller);
+    window.show();
+    QCoreApplication::processEvents();
+
+    auto* home = window.homePage();
+    auto* combo = home->findChild<QComboBox*>(QStringLiteral("VanillaVersionCombo"));
+    auto* error = home->findChild<QLabel*>(QStringLiteral("VanillaVersionsError"));
+    QVERIFY(combo);
+    QVERIFY(error);
+
+    auto* load = buttonWithText(*home, QStringLiteral("获取版本列表"));
+    QVERIFY(load);
+    load->click();
+    QCoreApplication::processEvents();
+    workspace.failVanillaVersions(application::ImportError::Network,
+                                  QStringLiteral("https://example.invalid/version_manifest.json"));
+    QCoreApplication::processEvents();
+
+    QVERIFY(controller.snapshot().versionsError.has_value());
+    QVERIFY(error->isVisible());
+    QVERIFY(error->text().contains(QStringLiteral("网络")));
+    QVERIFY(!error->text().contains(QStringLiteral("https")));
+    QCOMPARE(combo->count(), 1);
+    QCOMPARE(combo->itemText(0), QStringLiteral("版本列表获取失败"));
+    QVERIFY(!combo->isEnabled());
+    auto* install = buttonWithText(*home, QStringLiteral("安装原版"));
+    QVERIFY(install);
+    QVERIFY(!install->isEnabled());
+
+    auto* retry = buttonWithText(*home, QStringLiteral("重试版本列表"));
+    QVERIFY(retry);
+    QVERIFY(retry->isEnabled());
+    retry->click();
+    QCoreApplication::processEvents();
+    QCOMPARE(workspace.vanillaListCalls, 2);
+    QVERIFY(controller.snapshot().versionsLoading);
+    QVERIFY(!error->isVisible());
+
+    workspace.completeVanillaVersions({QStringLiteral("1.21.4")});
+    QCoreApplication::processEvents();
+    QCOMPARE(combo->count(), 1);
+    QCOMPARE(combo->itemText(0), QStringLiteral("1.21.4"));
+    QVERIFY(combo->isEnabled());
+    QVERIFY(!error->isVisible());
+    QVERIFY(buttonWithText(*home, QStringLiteral("刷新版本列表")));
+}
+
+void TestUi::homeVanillaInstallLocksAndCancelsWithoutLaunch()
+{
+    FakeModpackWorkspace workspace;
+    application::ModpackController controller(workspace, bundledModpackInstance());
+    UiGateway gateway;
+    gateway.home = onlineHomeSnapshot();
+
+    hustmcl::app::MainWindow window(&gateway, hustmcl::app::MainWindow::Mode::Real);
+    window.setModpackController(&controller);
+    window.show();
+    QCoreApplication::processEvents();
+
+    controller.loadVanillaVersions();
+    workspace.completeVanillaVersions({QStringLiteral("1.21.4")});
+    QCoreApplication::processEvents();
+
+    auto* home = window.homePage();
+    auto* combo = home->findChild<QComboBox*>(QStringLiteral("VanillaVersionCombo"));
+    auto* instanceCombo = home->findChild<QComboBox*>(
+        QStringLiteral("ModpackInstanceCombo"));
+    auto* pick = modpackPickButton(*home);
+    auto* install = buttonWithText(*home, QStringLiteral("安装原版"));
+    auto* reload = buttonWithText(*home, QStringLiteral("刷新版本列表"));
+    QVERIFY(combo);
+    QVERIFY(instanceCombo);
+    QVERIFY(pick);
+    QVERIFY(install);
+    QVERIFY(reload);
+
+    gateway.home.sessionActive = true;
+    gateway.publish();
+    QCoreApplication::processEvents();
+    QVERIFY(!install->isEnabled());
+    QVERIFY(!combo->isEnabled());
+    QVERIFY(!reload->isEnabled());
+    QVERIFY(!pick->isEnabled());
+
+    gateway.home.sessionActive = false;
+    gateway.publish();
+    QCoreApplication::processEvents();
+    QVERIFY(install->isEnabled());
+
+    install->click();
+    QCoreApplication::processEvents();
+    QCOMPARE(workspace.vanillaInspectCalls.size(), std::size_t(1));
+    QVERIFY(!install->isEnabled());
+    QVERIFY(!combo->isEnabled());
+    QVERIFY(!reload->isEnabled());
+    QVERIFY(!pick->isEnabled());
+    QVERIFY(!instanceCombo->isEnabled());
+
+    auto* cancel = buttonWithText(*home, QStringLiteral("取消安装"));
+    QVERIFY(cancel);
+    QVERIFY(cancel->isVisible());
+    QVERIFY(cancel->isEnabled());
+    cancel->click();
+    QCoreApplication::processEvents();
+    QVERIFY(controller.snapshot().phase == application::ImportPhase::Cancelling);
+    QCOMPARE(workspace.cancelCalls, 1);
+    auto* cancelling = buttonWithText(*home, QStringLiteral("正在取消…"));
+    QVERIFY(cancelling);
+    QVERIFY(!cancelling->isEnabled());
+
+    workspace.failVanillaInspect(application::ImportError::Cancelled);
+    QCoreApplication::processEvents();
+    QVERIFY(controller.snapshot().phase == application::ImportPhase::Cancelled);
+
+    auto* retry = buttonWithText(*home, QStringLiteral("重试安装原版"));
+    QVERIFY(retry);
+    QVERIFY(retry->isVisible());
+    QVERIFY(retry->isEnabled());
+    retry->click();
+    QCoreApplication::processEvents();
+    QCOMPARE(workspace.vanillaInspectCalls.size(), std::size_t(2));
+    QCOMPARE(workspace.vanillaInspectCalls.at(1).version, QStringLiteral("1.21.4"));
+    QCOMPARE(gateway.primaryRequests, 0);
+}
+
+void TestUi::homeVanillaInstallSuccessKeepsManualLaunch()
+{
+    FakeModpackWorkspace workspace;
+    application::ModpackController controller(workspace, bundledModpackInstance());
+    UiGateway gateway;
+    gateway.home = onlineHomeSnapshot();
+
+    hustmcl::app::MainWindow window(&gateway, hustmcl::app::MainWindow::Mode::Real);
+    window.setModpackController(&controller);
+    window.show();
+    QCoreApplication::processEvents();
+
+    controller.loadVanillaVersions();
+    workspace.completeVanillaVersions({QStringLiteral("1.21.4")});
+    QCoreApplication::processEvents();
+
+    auto* home = window.homePage();
+    auto* install = buttonWithText(*home, QStringLiteral("安装原版"));
+    QVERIFY(install);
+    install->click();
+    QCoreApplication::processEvents();
+    QCOMPARE(workspace.vanillaInspectCalls.size(), std::size_t(1));
+
+    workspace.completeVanillaInspect(vanillaModpack(QStringLiteral("1.21.4")));
+    QCoreApplication::processEvents();
+    QVERIFY(controller.snapshot().phase == application::ImportPhase::PreparingGame);
+    workspace.completePrepare();
+    QCoreApplication::processEvents();
+    QVERIFY(controller.snapshot().phase == application::ImportPhase::InstallingFiles);
+    workspace.installProgress({2, 10, 100, 1000});
+    QCoreApplication::processEvents();
+    workspace.completeInstall();
+    QCoreApplication::processEvents();
+    QVERIFY(controller.snapshot().phase == application::ImportPhase::Committing);
+
+    const application::InstalledInstance installed{
+        QStringLiteral("pack-vanilla-1214"), QStringLiteral("Minecraft 1.21.4"),
+        QStringLiteral("1.21.4"), QStringLiteral("D:\\HustMCL\\data\\instances\\pack-vanilla-1214"),
+        QStringLiteral("1.21.4"), QStringLiteral("D:\\HustMCL\\runtime\\bin\\java.exe")};
+    workspace.completeCommit(installed);
+    QCoreApplication::processEvents();
+
+    QVERIFY(controller.snapshot().phase == application::ImportPhase::Succeeded);
+    QCOMPARE(controller.snapshot().vanillaVersion, QStringLiteral("1.21.4"));
+    QCOMPARE(controller.snapshot().selectedId, QStringLiteral("pack-vanilla-1214"));
+    auto* combo = home->findChild<QComboBox*>(QStringLiteral("VanillaVersionCombo"));
+    auto* instanceCombo = home->findChild<QComboBox*>(
+        QStringLiteral("ModpackInstanceCombo"));
+    auto* hint = home->findChild<QLabel*>(QStringLiteral("VanillaHint"));
+    auto* error = home->findChild<QLabel*>(QStringLiteral("ModpackError"));
+    QVERIFY(combo);
+    QVERIFY(instanceCombo);
+    QVERIFY(hint);
+    QVERIFY(error);
+    QVERIFY(combo->isEnabled());
+    QVERIFY(instanceCombo->findData(QStringLiteral("pack-vanilla-1214")) >= 0);
+    QVERIFY(hint->isVisible());
+    QVERIFY(hint->text().contains(QStringLiteral("安装完成")));
+    QVERIFY(hint->text().contains(QStringLiteral("手动启动")));
+    QVERIFY(!error->isVisible());
+    QString homeText = joinedLabelText(*home);
+    QVERIFY(!homeText.contains(QStringLiteral("整合包路径丢失")));
+    QVERIFY(!homeText.contains(QStringLiteral("无法读取整合包")));
+    QCOMPARE(gateway.primaryRequests, 0);
+
+    auto* duplicate = buttonWithText(*home, QStringLiteral("安装原版"));
+    QVERIFY(duplicate);
+    QVERIFY(duplicate->isEnabled());
+    duplicate->click();
+    QCoreApplication::processEvents();
+    QCOMPARE(workspace.vanillaInspectCalls.size(), std::size_t(2));
+    workspace.failVanillaInspect(application::ImportError::Conflict,
+                                 QStringLiteral("already-installed"));
+    QCoreApplication::processEvents();
+
+    QVERIFY(controller.snapshot().phase == application::ImportPhase::Failed);
+    QVERIFY(error->isVisible());
+    QVERIFY(error->text().contains(QStringLiteral("已经安装")));
+    QVERIFY(!error->text().contains(QStringLiteral("整合包")));
+    QCOMPARE(gateway.primaryRequests, 0);
+}
+
+void TestUi::homeVanillaInstallerReachableInNarrowWindow()
+{
+    FakeModpackWorkspace workspace;
+    application::ModpackController controller(workspace, bundledModpackInstance());
+    UiGateway gateway;
+    gateway.home = onlineHomeSnapshot();
+
+    hustmcl::app::MainWindow window(&gateway, hustmcl::app::MainWindow::Mode::Real);
+    window.setModpackController(&controller);
+    window.resize(840, 460);
+    window.show();
+    QCoreApplication::processEvents();
+
+    controller.loadVanillaVersions();
+    workspace.completeVanillaVersions({QStringLiteral("1.21.4")});
+    QCoreApplication::processEvents();
+
+    auto* home = window.homePage();
+    auto* scroll = home->scrollArea();
+    auto* combo = home->findChild<QComboBox*>(QStringLiteral("VanillaVersionCombo"));
+    auto* install = buttonWithText(*home, QStringLiteral("安装原版"));
+    auto* bar = home->findChild<hustmcl::ui::PrimaryActionBar*>();
+    QVERIFY(scroll);
+    QVERIFY(combo);
+    QVERIFY(install);
+    QVERIFY(bar);
+    QVERIFY(bar->secondaryButton()->isVisible());
+    QCOMPARE(bar->secondaryButton()->text(), QStringLiteral("安装其他版本"));
+    bar->secondaryButton()->click();
+    QCoreApplication::processEvents();
+
+    QVERIFY(combo->isVisible());
+    const QRect comboRect(combo->mapTo(scroll->viewport(), QPoint(0, 0)),
+                          combo->size());
+    QVERIFY(scroll->viewport()->rect().intersects(comboRect));
+    QVERIFY(install->isVisible());
+    QVERIFY(bar->primaryButton()->isVisible());
+    QVERIFY(bar->primaryButton()->isEnabled());
+    QVERIFY(combo->hasFocus());
+}
+
 
 void TestUi::homeModpackControllerReplacementIgnoresOldController()
 {

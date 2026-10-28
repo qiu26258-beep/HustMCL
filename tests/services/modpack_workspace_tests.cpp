@@ -39,7 +39,7 @@ int main(int argc,char**argv){
  }version.insert("libraries",libraries);const auto versionBytes=QJsonDocument(version).toJson(QJsonDocument::Compact);
  QTcpServer server;if(!server.listen(QHostAddress::LocalHost,0))return 3;
  const auto base=QString("http://127.0.0.1:%1").arg(server.serverPort());
- const auto manifest=QJsonDocument(QJsonObject{{"versions",QJsonArray{QJsonObject{{"id","1.21.1"},{"url",base+"/version"},{"sha1",QString::fromLatin1(sha(versionBytes))}}}}}).toJson();
+ const auto manifest=QJsonDocument(QJsonObject{{"versions",QJsonArray{QJsonObject{{"id","1.21.1"},{"type","release"},{"url",base+"/version"},{"sha1",QString::fromLatin1(sha(versionBytes))}}}}}).toJson();
  QObject::connect(&server,&QTcpServer::newConnection,[&]{while(auto* socket=server.nextPendingConnection()){
    QObject::connect(socket,&QTcpSocket::disconnected,socket,&QObject::deleteLater);
    QObject::connect(socket,&QTcpSocket::readyRead,socket,[&,socket]{const auto request=socket->readAll();if(!request.contains("\r\n\r\n"))return;
@@ -67,6 +67,16 @@ int main(int argc,char**argv){
  write(data.filePath("cache/sha1/"+digest),"bad-cache");controller.importFile(fixtures.filePath("failed.zip"));
  if(!wait([&]{return !importActive(controller.snapshot().phase);})||controller.snapshot().phase!=ImportPhase::Failed||controller.snapshot().error->code!=ImportError::Integrity)return 15;
  if(QDir(data.filePath("instances")).entryList(QDir::Dirs|QDir::NoDotAndDotDot).size()!=1||bytes(data.filePath("game/saves/keep.txt"))!="old-world")return 16;
+ std::optional<ImportResult<QStringList>> versions;
+ workspace.listVanillaVersions([&](auto result){versions=std::move(result);});
+ if(!wait([&]{return versions.has_value();})||!std::holds_alternative<QStringList>(*versions)||std::get<QStringList>(*versions)!=QStringList{"1.21.1"})return 30;
+ write(data.filePath("cache/sha1/"+digest),engine);
+ if(!controller.installVanilla("1.21.1")||!wait([&]{return !importActive(controller.snapshot().phase);})||controller.snapshot().phase!=ImportPhase::Succeeded)return 31;
+ const auto vanilla=controller.snapshot().instances.back();
+ if(!std::holds_alternative<services::LocalGame>(services::verifyLocalGame(vanilla.root,"1.21.1"))||!services::verifyImportedPackFiles(vanilla.root,true))return 32;
+ controller.installVanilla("1.21.1");
+ if(!wait([&]{return !importActive(controller.snapshot().phase);})||controller.snapshot().phase!=ImportPhase::Failed||controller.snapshot().error->code!=ImportError::Conflict)return 33;
+ if(bytes(data.filePath("game/saves/keep.txt"))!="old-world"||QDir(data.filePath("instances")).entryList(QDir::Dirs|QDir::NoDotAndDotDot).size()!=2)return 34;
  std::cout<<"staged installation, publish, reread, overrides, mod verification, cancellation, conflict, unsupported loader and corrupt cache passed\n";
  }catch(const ImportFailure& e){std::cerr<<"unexpected "<<static_cast<int>(e.code)<<" "<<e.context.toStdString();return 20;}catch(...){return 21;}
 }

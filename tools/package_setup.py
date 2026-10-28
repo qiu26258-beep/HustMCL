@@ -29,6 +29,7 @@ CHANNELS = {
     "market": ("HustMCL.MarketTrial", "HustMCL Market Trial", "HustMCL-Market", "HustMCL Market"),
     "modpacks": ("HustMCL.ModpackTrial", "HustMCL Modpacks", "HustMCL-Modpacks", "HustMCL Modpacks"),
     "public": ("HustMCL.PublicPreview", "HustMCL Preview", "HustMCL-Preview", "HustMCL Preview"),
+    "accounts": ("HustMCL.AccountPreview", "HustMCL Accounts", "HustMCL-Accounts", "HustMCL Accounts"),
 }
 
 
@@ -155,7 +156,7 @@ def build(package: Path, output: Path, compiler: Path, script: Path, launcher: P
         overrides["hustmcl_desktop.exe"] = launcher
     if channel not in CHANNELS:
         raise ValueError("Unknown installer channel")
-    if channel == "public":
+    if channel in {"public", "accounts"}:
         if launcher is None:
             raise ValueError("Public distribution requires an explicit public launcher")
         if "0.1.0-public-preview".encode("utf-16le") not in launcher.read_bytes():

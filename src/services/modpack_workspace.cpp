@@ -183,6 +183,41 @@ void QtModpackWorkspace::inspect(const QString& task,const QString& archive,std:
         return job.archive.pack;
     },std::move(complete));
 }
+void QtModpackWorkspace::inspectVanilla(const QString& task,const QString& version,std::function<void(ImportResult<core::Modpack>)> complete){
+    if(impl_->job){complete(ImportFailure{ImportError::Busy,{}});return;}
+    auto j=std::make_shared<Impl::Job>();j->task=task;impl_->job=j;const auto root=impl_->root;
+    impl_->run<core::Modpack>(j,[root,version](auto& job){
+        if(!core::validPackVersion(version.toStdString()))pack::stop(ImportError::InvalidManifest,"minecraft-version");
+        pack::checkCancel(job.cancelled);
+        pack::mkdir(root);const auto lockPath=QDir(root).filePath(".modpack-import.lock");
+        if(QFileInfo::exists(lockPath)&&!pack::safeExisting(lockPath))pack::stop(ImportError::UnsafePath);
+        job.lock=std::make_unique<QLockFile>(lockPath);job.lock->setStaleLockTime(0);if(!job.lock->tryLock(0))pack::stop(ImportError::Busy);
+        job.stage=QDir(root).filePath("modpack-staging/"+job.task);job.payload=QDir(job.stage).filePath("payload");pack::mkdir(job.payload);
+        pack::write(QDir(job.stage).filePath("owner.json"),QJsonDocument(QJsonObject{{"schema",1},{"task",job.task}}).toJson());
+        job.id="pack-"+QString::fromLatin1(QCryptographicHash::hash("HustMCL.Vanilla:"+version.toUtf8(),QCryptographicHash::Sha256).toHex());
+        if(QFileInfo::exists(QDir(root).filePath("instances/"+job.id)))pack::stop(ImportError::Conflict,"already-installed");
+        job.archive.pack={"Minecraft "+version.toStdString(),version.toStdString(),version.toStdString(),"",core::PackLoader::Vanilla,{}};
+        return job.archive.pack;
+    },std::move(complete));
+}
+void QtModpackWorkspace::listVanillaVersions(std::function<void(ImportResult<QStringList>)> complete){
+    auto job=std::make_shared<Impl::Job>();const auto options=impl_->options;
+    impl_->run<QStringList>(job,[options](auto& task){
+        pack::Network net(task.cancelled,options.allowLoopbackHttp,options.timeoutMs);
+        const auto manifest=object(net.bytes(options.versionManifestUrl));
+        if(!manifest.value("versions").isArray())pack::stop(ImportError::InvalidManifest,"version-list");
+        QStringList versions;
+        for(const auto& item:manifest.value("versions").toArray()){
+            const auto value=item.toObject();const auto id=value.value("id").toString();const auto parts=id.split('.');
+            bool majorOk=false,minorOk=false;const auto major=parts.value(0).toInt(&majorOk),minor=parts.value(1).toInt(&minorOk);
+            const bool modern=majorOk&&((major==1&&minorOk&&minor>=19)||major>=26);
+            if(value.value("type")=="release"&&modern&&core::validPackVersion(id.toStdString())&&!versions.contains(id))versions.append(id);
+            if(versions.size()>=100)break;
+        }
+        if(versions.isEmpty())pack::stop(ImportError::InvalidManifest,"version-list");
+        return versions;
+    },std::move(complete));
+}
 void QtModpackWorkspace::prepareGame(const QString& task,Progress p,Done complete){
     const auto j=impl_->job;if(!j||j->task!=task){complete(ImportFailure{ImportError::Busy,{}});return;}
     const auto root=impl_->root,bundled=impl_->bundled;const auto options=impl_->options;

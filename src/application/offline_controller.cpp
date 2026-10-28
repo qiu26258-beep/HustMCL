@@ -1,4 +1,5 @@
 #include <hustmcl/application/offline_controller.h>
+#include <hustmcl/application/authenticated_launch.h>
 #include <QDate>
 #include <QPointer>
 
@@ -48,12 +49,69 @@ void OfflineController::publish()
     emit homeChanged(home);
     if (guard) emit installChanged(install);
 }
+void OfflineController::setAccountController(AccountController* account)
+{
+    if (home_.sessionActive || account_ == account) return;
+    if (account_) disconnect(account_, nullptr, this, nullptr);
+    offlinePlayerName_ = home_.account.displayName;
+    account_ = account;
+    home_.offlineMode = account_ == nullptr;
+    if (account_) connect(account_, &AccountController::changed, this, [this] { accountChanged(); });
+    accountChanged();
+}
+void OfflineController::accountChanged()
+{
+    if (!account_) return;
+    home_.account = account_->snapshot();
+    if (home_.sessionActive) { publish(); return; }
+    home_.instance.editionLabel = QStringLiteral("Java · 正版账号");
+    install_.variantLabel = QStringLiteral("Minecraft Java");
+    const bool ready = account_->session() != nullptr;
+    home_.primaryAction = ready ? PrimaryAction::Launch : PrimaryAction::SignIn;
+    home_.primaryLabel = home_.account.busy ? QStringLiteral("登录中…") : ready ? QStringLiteral("启动游戏") : QStringLiteral("登录微软账号");
+    home_.primaryEnabled = !importActive_ && !home_.account.busy && (!ready || !home_.instance.instanceId.isEmpty());
+    home_.statusTitle = ready ? QStringLiteral("正版账号已就绪") : QStringLiteral("登录 Minecraft");
+    home_.primaryReason = home_.account.message;
+    if (ready && home_.instance.instanceId.isEmpty()) {
+        home_.primaryLabel = QStringLiteral("请先安装游戏");
+        home_.primaryReason = QStringLiteral("账号已验证，请安装原版或导入支持的整合包，再手动启动。");
+    }
+    publish();
+}
+void OfflineController::requestSignIn() { if (account_ && !home_.sessionActive) account_->signIn(); }
+void OfflineController::requestSignOut() { if (account_ && !home_.sessionActive) account_->signOut(); }
+void OfflineController::requestCancelSignIn() { if (account_) account_->cancel(); }
 bool OfflineController::setPlayerName(const QString& name)
 {
-    if (home_.sessionActive || std::holds_alternative<OfflineLaunchError>(makeOfflineLaunch({}, name))) return false;
+    if (account_ || home_.sessionActive || std::holds_alternative<OfflineLaunchError>(makeOfflineLaunch({}, name))) return false;
     home_.account.displayName = name;
+    persist();
     publish();
     return true;
+}
+bool OfflineController::setMemoryMb(int memoryMb)
+{
+    if (home_.sessionActive || !validMemoryMb(memoryMb)) return false;
+    home_.launch.memoryMb = memoryMb;
+    preparation_.setMemoryMb(memoryMb);
+    persist();
+    publish();
+    return true;
+}
+void OfflineController::applySettings(const LauncherSettings& settings)
+{
+    if (home_.sessionActive) return;
+    if (!std::holds_alternative<OfflineLaunchError>(makeOfflineLaunch({}, settings.playerName)))
+        home_.account.displayName = settings.playerName;
+    if (validMemoryMb(settings.memoryMb)) {
+        home_.launch.memoryMb = settings.memoryMb;
+        preparation_.setMemoryMb(settings.memoryMb);
+    }
+    publish();
+}
+void OfflineController::persist()
+{
+    if (store_) static_cast<void>(store_->save({account_ ? offlinePlayerName_ : home_.account.displayName, home_.launch.memoryMb}));
 }
 bool OfflineController::selectInstance(const InstalledInstance& instance)
 {
@@ -75,6 +133,7 @@ bool OfflineController::selectInstance(const InstalledInstance& instance)
     install_.targetPath = instance.root;
     install_.task.instanceId = instance.id;
     install_.task.phaseDetail = home_.primaryReason;
+    if (account_) { accountChanged(); return true; }
     publish();
     return true;
 }
@@ -87,13 +146,19 @@ void OfflineController::setImportActive(bool active)
     home_.primaryLabel = active ? QStringLiteral("正在安装整合包…") : home_.instance.instanceId.isEmpty() ? QStringLiteral("请先导入整合包") : QStringLiteral("启动游戏");
     home_.primaryReason = active ? QStringLiteral("安装完成后可手动启动游戏。")
                                 : QStringLiteral("启动前将重新校验当前实例和 Java。");
+    if (account_) { accountChanged(); return; }
     publish();
 }
 void OfflineController::requestPrimaryAction()
 {
+    if (account_ && !home_.sessionActive && !importActive_ && !account_->session()) {
+        if (home_.account.state == AccountState::SignedIn && account_->refresh()) return;
+        requestSignIn(); return;
+    }
     if (home_.sessionActive || importActive_ || home_.instance.instanceId.isEmpty()) return;
     launching_ = false;
     home_.sessionActive = true;
+    if (account_) account_->setLaunchActive(true);
     home_.primaryEnabled = false;
     install_.verified = false;
     install_.task.error.reset();
@@ -139,7 +204,7 @@ void OfflineController::preparationChanged(const PreparationSnapshot& snapshot)
     case PreparationPhase::Planning:
     case PreparationPhase::Prepared:
         task.phase = TaskPhase::Ready;
-        task.phaseDetail = QStringLiteral("正在准备离线启动参数。");
+        task.phaseDetail = account_ ? QStringLiteral("正在准备正版启动参数。") : QStringLiteral("正在准备离线启动参数。");
         home_.primaryLabel = QStringLiteral("准备启动…");
         break;
     case PreparationPhase::Cancelling:
@@ -151,6 +216,7 @@ void OfflineController::preparationChanged(const PreparationSnapshot& snapshot)
         task.state = TaskState::Cancelled;
         task.phaseDetail = QStringLiteral("已取消启动，未创建游戏进程。");
         home_.sessionActive = false;
+        if (account_) account_->setLaunchActive(false);
         home_.primaryEnabled = true;
         home_.primaryAction = PrimaryAction::Launch;
         home_.primaryLabel = QStringLiteral("启动游戏");
@@ -176,10 +242,22 @@ void OfflineController::preparationChanged(const PreparationSnapshot& snapshot)
 void OfflineController::prepared(const QString& taskId, const core::LaunchPlan& plan)
 {
     if (!home_.sessionActive || launching_ || taskId != install_.task.taskId) return;
-    const auto resolved = makeOfflineLaunch(plan, home_.account.displayName);
-    if (!std::holds_alternative<OfflineLaunch>(resolved)) {
-        fail(TaskErrorCode::Launch, QStringLiteral("离线身份无效"), QStringLiteral("玩家名须为 1–16 位英文字母、数字或下划线。"));
-        return;
+    GameLaunch identity;
+    if (account_) {
+        const auto* session = account_->session();
+        if (!session) {
+            fail(TaskErrorCode::Permission, QStringLiteral("登录已过期"), QStringLiteral("请重新登录微软账号后启动。")); return;
+        }
+        const auto result = makeAuthenticatedLaunch(plan, *session);
+        if (const auto* value = std::get_if<GameLaunch>(&result)) identity = *value;
+        else { fail(TaskErrorCode::Permission, QStringLiteral("账号验证未通过"), QStringLiteral("请重新登录后重试。")); return; }
+    } else {
+        const auto resolved = makeOfflineLaunch(plan, home_.account.displayName);
+        if (!std::holds_alternative<OfflineLaunch>(resolved)) {
+            fail(TaskErrorCode::Launch, QStringLiteral("离线身份无效"), QStringLiteral("玩家名须为 1–16 位英文字母、数字或下划线。"));
+            return;
+        }
+        identity = std::get<OfflineLaunch>(resolved);
     }
     launching_ = true;
     home_.environment.state = JavaState::Ready;
@@ -192,7 +270,7 @@ void OfflineController::prepared(const QString& taskId, const core::LaunchPlan& 
     const QPointer<OfflineController> guard(this);
     publish();
     if (!guard || !home_.sessionActive) return;
-    process_.start(taskId, plan, std::get<OfflineLaunch>(resolved), [guard, taskId](GameProcessEvent event) {
+    process_.start(taskId, plan, identity, [guard, taskId](GameProcessEvent event) {
         if (guard) guard->processEvent(taskId, std::move(event));
     });
 }
@@ -215,6 +293,7 @@ void OfflineController::processEvent(const QString& taskId, GameProcessEvent eve
     } else {
         launching_ = false;
         home_.sessionActive = false;
+        if (account_) account_->setLaunchActive(false);
         home_.primaryEnabled = true;
         home_.primaryAction = PrimaryAction::Launch;
         home_.primaryLabel = QStringLiteral("再次启动");
@@ -229,6 +308,7 @@ void OfflineController::fail(TaskErrorCode code, const QString& summary, const Q
 {
     launching_ = false;
     home_.sessionActive = false;
+    if (account_) account_->setLaunchActive(false);
     home_.primaryEnabled = true;
     home_.primaryAction = PrimaryAction::Retry;
     home_.primaryLabel = QStringLiteral("重试启动");

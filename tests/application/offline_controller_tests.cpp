@@ -90,6 +90,61 @@ int main(int argc, char** argv) {
             && controller.homeSnapshot().instance.instanceId == "pack-x"
             && controller.homeSnapshot().dataPath == "D:/pack" && controller.installSnapshot().task.taskId.isEmpty(),
             "selecting a published instance resets launch state and does not auto start");
+        {
+            struct Store : SettingsStore {
+                std::vector<LauncherSettings> saved;
+                std::optional<LauncherSettings> load() override { return std::nullopt; }
+                bool save(const LauncherSettings& s) override { saved.push_back(s); return true; }
+            } store;
+            Source s2; Probe p2; Process pr2; LaunchPreparation prep2(s2, p2);
+            OfflineController c(prep2, pr2, "D:/x", "26.2");
+            c.setSettingsStore(&store);
+            c.applySettings({"Saved_Name", 4096});
+            require(c.homeSnapshot().account.displayName == "Saved_Name" && c.homeSnapshot().launch.memoryMb == 4096
+                    && store.saved.empty(), "stored settings are applied without being rewritten");
+            c.applySettings({"bad name!", 100});
+            require(c.homeSnapshot().account.displayName == "Saved_Name" && c.homeSnapshot().launch.memoryMb == 4096,
+                    "invalid stored fields are ignored");
+            require(!c.setMemoryMb(512) && !c.setMemoryMb(70000) && c.setMemoryMb(3072), "memory range enforced by application");
+            require(store.saved.size() == 1 && store.saved[0].memoryMb == 3072 && store.saved[0].playerName == "Saved_Name",
+                    "accepted memory change is persisted with current name");
+            require(c.setPlayerName("Next_One") && store.saved.size() == 2 && store.saved[1].playerName == "Next_One"
+                    && store.saved[1].memoryMb == 3072, "accepted name change is persisted");
+            require(!c.setPlayerName("中文") && store.saved.size() == 2, "rejected change is not persisted");
+            c.requestPrimaryAction();
+            require(!c.setMemoryMb(2048) && store.saved.size() == 2, "memory locked while a launch is active");
+        }
         std::cout << "offline controller scenarios passed\n";
+        {
+            struct Accounts : AccountService {
+                Completion done;
+                void signIn(Completion cb) override { done = std::move(cb); }
+                void refresh(const QString&, Completion cb) override { done = std::move(cb); }
+                void cancel() override {}
+            } accounts;
+            struct Credentials : CredentialStore {
+                std::variant<QString, AuthFailure> load() override { return QString{}; }
+                bool save(const QString&) override { return true; }
+                bool clear() override { return true; }
+            } credentials;
+            AccountController account(accounts, credentials);
+            Source source3; Probe probe3; Process process3; LaunchPreparation prep3(source3, probe3);
+            OfflineController c(prep3, process3, "D:/online", "26.2");
+            c.setAccountController(&account);
+            c.requestPrimaryAction();
+            require(source3.calls.empty() && accounts.done && !c.homeSnapshot().offlineMode, "signed-out primary action requests login without launching offline");
+            accounts.done(AuthSuccess{{"Real_Player", QString(32, 'b'), "private-online-token", "client", "123", QDateTime::currentDateTimeUtc().addSecs(3600)}, "refresh"});
+            require(source3.calls.empty() && c.homeSnapshot().account.state == AccountState::SignedIn, "login never automatically starts game");
+            require(!c.setPlayerName("Offline_Name"), "online profile cannot be edited as offline name");
+            c.requestPrimaryAction();
+            require(source3.calls.size() == 1 && !account.signOut(), "launch prepares verified game and locks account");
+            source3.calls[0](input());
+            probe3.calls[0](core::JavaRuntime{*input().manualJava, 25, core::RuntimeArchitecture::X64});
+            require(process3.calls.size() == 1 && process3.identity.authenticated && process3.identity.playerName == "Real_Player", "same launch pipeline receives actual online profile");
+            process3.calls[0]({GameProcessEvent::Kind::Finished, "D:/logs/online"});
+            require(!c.homeSnapshot().sessionActive && account.signOut(), "normal exit unlocks account changes");
+            c.requestPrimaryAction();
+            require(source3.calls.size() == 1, "signed-out retry never falls back to offline game");
+        }
     } catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
 }

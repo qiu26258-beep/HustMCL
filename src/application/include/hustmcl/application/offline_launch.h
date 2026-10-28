@@ -6,11 +6,18 @@
 
 namespace hustmcl::application {
 enum class OfflineLaunchError { InvalidPlayerName, DemoPlan };
-struct OfflineLaunch {
+struct GameLaunch {
+    GameLaunch() = default;
+    GameLaunch(QString name, QString id, QStringList args)
+        : playerName(std::move(name)), uuid(std::move(id)), arguments(std::move(args)) {}
     QString playerName;
-    QString uuid; // Canonical UUID; offline identity, never an authenticated profile.
+    QString uuid;
     QStringList arguments;
+    bool authenticated = false;
+    QStringList redactions; // Backend-only secrets to remove from process output.
 };
+// Source compatibility for the existing explicitly offline use case.
+using OfflineLaunch = GameLaunch;
 using OfflineLaunchResult = std::variant<OfflineLaunch, OfflineLaunchError>;
 [[nodiscard]] OfflineLaunchResult makeOfflineLaunch(const core::LaunchPlan& plan, const QString& playerName);
 }

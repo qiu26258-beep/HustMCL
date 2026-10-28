@@ -26,15 +26,37 @@ ModpackController::~ModpackController() { if (importActive(state_.phase)) worksp
 void ModpackController::publish() { const auto copy = state_; emit changed(copy); }
 bool ModpackController::current(const QString& task, ImportPhase phase) const { return state_.taskId == task && state_.phase == phase; }
 bool ModpackController::importFile(const QString& path) {
-    if (importActive(state_.phase) || state_.launchActive || path.isEmpty()) return false;
+    if (path.isEmpty()) return false;
+    return begin(path, {});
+}
+bool ModpackController::installVanilla(const QString& version) {
+    if (!core::validPackVersion(version.toStdString())) return false;
+    return begin({}, version);
+}
+void ModpackController::loadVanillaVersions() {
+    if (state_.versionsLoading) return;
+    state_.versionsLoading = true; state_.versionsError.reset();
+    QPointer<ModpackController> guard(this); publish();
+    if (!guard) return;
+    workspace_.listVanillaVersions([guard](auto result) {
+        if (!guard) return;
+        guard->state_.versionsLoading = false;
+        if (const auto* versions = std::get_if<QStringList>(&result)) guard->state_.vanillaVersions = *versions;
+        else guard->state_.versionsError = std::get<ImportFailure>(result);
+        guard->publish();
+    });
+}
+bool ModpackController::begin(const QString& path, const QString& vanillaVersion) {
+    if (importActive(state_.phase) || state_.launchActive) return false;
     state_.taskId = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    state_.archivePath = path; state_.packName.clear(); state_.error.reset(); state_.progress = {};
+    state_.archivePath = path; state_.vanillaVersion = vanillaVersion;
+    state_.packName.clear(); state_.error.reset(); state_.progress = {};
     state_.phase = ImportPhase::Inspecting;
     const auto task = state_.taskId;
     QPointer<ModpackController> guard(this);
     publish();
     if (!guard || !current(task, ImportPhase::Inspecting)) return true;
-    workspace_.inspect(task, path, [guard, task](auto result) {
+    auto inspected = [guard, task](ImportResult<core::Modpack> result) {
         if (!guard || guard->state_.taskId != task) return;
         if (auto error = std::get_if<ImportFailure>(&result)) { guard->failed(task, *error); return; }
         if (guard->state_.phase == ImportPhase::Cancelling) { guard->failed(task,{ImportError::Cancelled,{}}); return; }
@@ -46,7 +68,9 @@ bool ModpackController::importFile(const QString& path) {
         if (!guard) return;
         guard->workspace_.prepareGame(task, [guard, task](auto p){if(guard)guard->progress(task,ImportPhase::PreparingGame,p);},
             [guard, task](auto r){if(guard)guard->prepared(task,std::move(r));});
-    });
+    };
+    if (vanillaVersion.isEmpty()) workspace_.inspect(task, path, std::move(inspected));
+    else workspace_.inspectVanilla(task, vanillaVersion, std::move(inspected));
     return true;
 }
 void ModpackController::progress(const QString& task, ImportPhase phase, ImportProgress p) {
@@ -93,7 +117,7 @@ bool ModpackController::cancel(const QString& task) {
 }
 bool ModpackController::retry(const QString& task) {
     if(state_.taskId!=task || (state_.phase!=ImportPhase::Failed && state_.phase!=ImportPhase::Cancelled))return false;
-    return importFile(state_.archivePath);
+    return state_.vanillaVersion.isEmpty() ? importFile(state_.archivePath) : installVanilla(state_.vanillaVersion);
 }
 bool ModpackController::selectInstance(const QString& id) {
     if(importActive(state_.phase)||state_.launchActive)return false;

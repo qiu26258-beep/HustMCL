@@ -73,9 +73,17 @@ enum class TaskErrorCode {
 };
 
 struct AccountSnapshot {
+    AccountSnapshot() = default;
+    AccountSnapshot(AccountState s, QString name, QString provider)
+        : state(s), displayName(std::move(name)), providerLabel(std::move(provider)) {}
     AccountState state = AccountState::SignedOut;
     QString displayName;
     QString providerLabel;
+    QString message;
+    bool busy = false;
+    bool canSignIn = true;
+    bool canSignOut = false;
+    bool remembered = false;
 };
 
 struct InstanceSnapshot {

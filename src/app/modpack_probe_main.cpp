@@ -8,7 +8,7 @@
 #include <iostream>
 using namespace hustmcl;
 int main(int argc,char**argv){
- QCoreApplication app(argc,argv);if(argc!=4){std::cerr<<"Usage: hustmcl_modpack_probe DATA_ROOT BUNDLED_JAVA PACK\n";return 2;}
+ QCoreApplication app(argc,argv);if(argc!=4){std::cerr<<"Usage: hustmcl_modpack_probe DATA_ROOT BUNDLED_JAVA PACK_OR_--vanilla=VERSION\n";return 2;}
  const auto root=QDir::fromNativeSeparators(QString::fromLocal8Bit(argv[1]));const auto java=QDir::fromNativeSeparators(QString::fromLocal8Bit(argv[2]));
  services::QtModpackWorkspace workspace(root,java,{});application::ModpackController controller(workspace,{"bundled","Vanilla","26.2",root,"26.2",java});
  QObject::connect(&controller,&application::ModpackController::changed,&app,[&](const auto& s){
@@ -24,6 +24,8 @@ int main(int argc,char**argv){
    const auto e=*s.error;std::cout<<QJsonDocument(QJsonObject{{"status","failed"},{"error",static_cast<int>(e.code)},{"context",e.context},{"gameStarted",false}}).toJson(QJsonDocument::Compact).constData()<<std::endl;app.exit(3);
   }
  });
- QTimer::singleShot(0,&app,[&]{controller.importFile(QDir::fromNativeSeparators(QString::fromLocal8Bit(argv[3])));});
+ QTimer::singleShot(0,&app,[&]{const auto input=QString::fromLocal8Bit(argv[3]);
+  const bool started=input.startsWith("--vanilla=")?controller.installVanilla(input.mid(10)):controller.importFile(QDir::fromNativeSeparators(input));
+  if(!started){std::cerr<<"Invalid or busy installation request\n";app.exit(2);}});
  return app.exec();
 }

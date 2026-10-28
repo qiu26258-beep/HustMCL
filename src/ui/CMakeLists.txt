@@ -50,6 +50,11 @@ if(HUSTMCL_PUBLIC_RELEASE)
         COPYONLY
     )
     configure_file(
+        ${PROJECT_SOURCE_DIR}/resources/brand/hustmcl-128.png
+        ${CMAKE_CURRENT_BINARY_DIR}/hustmcl-128.png
+        COPYONLY
+    )
+    configure_file(
         ${PROJECT_SOURCE_DIR}/resources/public/resources.qrc.in
         ${CMAKE_CURRENT_BINARY_DIR}/resources.qrc
         COPYONLY

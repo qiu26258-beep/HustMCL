@@ -180,6 +180,19 @@ void runTests()
                 && useCase.snapshot().error->planError->code == PlanErrorCode::InvalidMemory,
                 "core plan failure remains stable application failure");
     }
+    {
+        Source source; Probe probe; LaunchPreparation useCase(source, probe);
+        std::vector<std::string> xmx;
+        QObject::connect(&useCase, &LaunchPreparation::prepared, [&](const QString&, const hustmcl::core::LaunchPlan& plan) {
+            for (const auto& argument : plan.arguments) for (const auto& part : argument)
+                if (const auto text = std::get_if<std::string>(&part); text && text->rfind("-Xmx", 0) == 0) xmx.push_back(*text);
+        });
+        useCase.setMemoryMb(4096);
+        require(useCase.start("instance"), "memory override start");
+        useCase.setMemoryMb(8192); // changes after start must not leak into the running task
+        source.reply(0, input()); probe.runtime(0);
+        require(xmx.size() == 1 && xmx[0] == "-Xmx4096M", "memory chosen at task start reaches the launch plan");
+    }
 }
 } // namespace
 

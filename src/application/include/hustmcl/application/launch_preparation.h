@@ -63,6 +63,8 @@ public:
     [[nodiscard]] PreparationSnapshot snapshot() const { return state_; }
     [[nodiscard]] bool start(const QString& instanceId);
     [[nodiscard]] bool cancel(const QString& taskId);
+    // Applied to plans built after this call; an in-flight task keeps the value it started with.
+    void setMemoryMb(int memoryMb) { memoryMb_ = memoryMb; }
 
 signals:
     void changed(const hustmcl::application::PreparationSnapshot& snapshot);
@@ -86,6 +88,8 @@ private:
     QString operationId_;
     std::optional<JavaProbeError> lastProbeError_;
     bool shuttingDown_ = false;
+    int memoryMb_ = 0; // 0 keeps the source's own value
+    int taskMemoryMb_ = 0;
 };
 
 } // namespace hustmcl::application

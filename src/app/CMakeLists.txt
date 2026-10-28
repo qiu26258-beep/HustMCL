@@ -83,6 +83,7 @@ target_link_libraries(hustmcl_desktop PRIVATE
     hustmcl_desktop_core
     hustmcl_runtime
     Qt6::Widgets
+    Qt6::Network
 )
 if(WIN32)
     target_sources(hustmcl_desktop PRIVATE "${HUSTMCL_WINDOWS_ICON_RC}")

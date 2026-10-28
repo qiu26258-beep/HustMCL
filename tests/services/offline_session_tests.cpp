@@ -50,6 +50,25 @@ int main(int argc, char** argv) {
             require(output["javaOptions"].toString().isEmpty() && output["classpath"].toString().isEmpty(), "Java injection environment removed");
             require(output["arguments"].toArray().first().toString() == identity.arguments.first(), "argument boundary preserved without shell");
         }
+        {
+            auto online = identity;
+            online.arguments = {"--echo-secret", "private-session-token"};
+            online.authenticated = true; online.redactions = {"private-session-token"};
+            QEventLoop loop;
+            QString log;
+            process.start("online", plan, online, [&](auto event) {
+                if (event.kind == GameProcessEvent::Kind::Finished) { log = event.logPath; loop.quit(); }
+                if (event.kind == GameProcessEvent::Kind::Failed) loop.quit();
+            });
+            QTimer::singleShot(5000, &loop, &QEventLoop::quit); loop.exec();
+            require(!log.isEmpty(), "authenticated process exits normally");
+            const auto report = QJsonDocument::fromJson(read(log + ".json")).object();
+            require(report["authenticated"].toBool() && !report.contains("offlineUuid"), "online report accurately distinguishes authenticated identity");
+            for (const auto& extension : {".stdout.log", ".stderr.log"}) {
+                const auto output = read(log + extension);
+                require(!output.contains("private-session-token") && output.contains("[REDACTED]"), "secrets split over output chunks are redacted");
+            }
+        }
         bool rejected = false;
         require(process.selectRoot(root), "idle process may select a verified instance root");
         plan.workingDirectory = L"C:\\Windows";

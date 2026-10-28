@@ -12,6 +12,14 @@ int main(int argc, char** argv) {
         {"javaOptions", qEnvironmentVariable("JAVA_TOOL_OPTIONS")},
         {"classpath", qEnvironmentVariable("CLASSPATH")}}).toJson(QJsonDocument::Compact);
     std::cout << result.constData() << std::flush;
+    if (app.arguments().contains("--echo-secret")) {
+        std::cout << "\nprivate-" << std::flush;
+        QThread::msleep(50);
+        std::cout << "session-token\n" << std::flush;
+        std::cerr << "private-session-" << std::flush;
+        QThread::msleep(50);
+        std::cerr << "token\n" << std::flush;
+    }
     QThread::msleep(400);
     return app.arguments().contains("--fail") ? 7 : 0;
 }

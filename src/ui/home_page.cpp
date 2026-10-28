@@ -6,6 +6,7 @@
 #include "primary_action_bar.h"
 #include "status_row.h"
 #include "summary_row.h"
+#include "theme.h"
 
 #include <QBoxLayout>
 #include <QComboBox>
@@ -91,6 +92,79 @@ QString importErrorText(application::ImportError error)
     return QStringLiteral("导入未完成，请稍后重试。");
 }
 
+QString vanillaPhaseText(application::ImportPhase phase)
+{
+    switch (phase) {
+    case application::ImportPhase::Idle:
+        return QStringLiteral("等待选择");
+    case application::ImportPhase::Inspecting:
+        return QStringLiteral("读取版本信息");
+    case application::ImportPhase::PreparingGame:
+        return QStringLiteral("准备游戏环境");
+    case application::ImportPhase::InstallingFiles:
+        return QStringLiteral("安装原版文件");
+    case application::ImportPhase::Committing:
+        return QStringLiteral("完成安装");
+    case application::ImportPhase::Succeeded:
+        return QStringLiteral("安装完成");
+    case application::ImportPhase::Cancelling:
+        return QStringLiteral("正在取消");
+    case application::ImportPhase::Cancelled:
+        return QStringLiteral("已取消");
+    case application::ImportPhase::Failed:
+        return QStringLiteral("安装失败");
+    }
+    return QStringLiteral("状态未知");
+}
+
+QString vanillaErrorText(application::ImportError error)
+{
+    switch (error) {
+    case application::ImportError::InvalidArchive:
+        return QStringLiteral("无法读取该原版版本的文件。");
+    case application::ImportError::UnsupportedFormat:
+        return QStringLiteral("暂不支持安装这个原版版本。");
+    case application::ImportError::UnsafePath:
+        return QStringLiteral("原版安装包含不安全的文件路径。");
+    case application::ImportError::InvalidManifest:
+        return QStringLiteral("原版版本信息不完整或无法识别。");
+    case application::ImportError::UnsupportedLoader:
+        return QStringLiteral("暂不支持安装这个原版版本。");
+    case application::ImportError::Network:
+        return QStringLiteral("下载原版文件时网络连接失败。");
+    case application::ImportError::Integrity:
+        return QStringLiteral("原版文件校验失败。");
+    case application::ImportError::Storage:
+        return QStringLiteral("保存原版文件失败，请检查磁盘空间和权限。");
+    case application::ImportError::Conflict:
+        return QStringLiteral("该版本已经安装，可在上方切换实例，无需重复安装。");
+    case application::ImportError::JavaUnavailable:
+        return QStringLiteral("没有找到可用的 Java 运行环境。");
+    case application::ImportError::Cancelled:
+        return QStringLiteral("安装已取消。");
+    case application::ImportError::Busy:
+        return QStringLiteral("当前有另一个任务正在进行。");
+    }
+    return QStringLiteral("原版安装未完成，请稍后重试。");
+}
+
+QString versionListErrorText(application::ImportError error)
+{
+    switch (error) {
+    case application::ImportError::Network:
+        return QStringLiteral("无法获取官方版本列表，请检查网络后重试。");
+    case application::ImportError::InvalidManifest:
+        return QStringLiteral("官方版本列表格式异常，请稍后重试。");
+    case application::ImportError::Busy:
+        return QStringLiteral("另一个任务正在进行，暂时不能获取版本列表。");
+    case application::ImportError::Cancelled:
+        return QStringLiteral("版本列表获取已取消。");
+    default:
+        break;
+    }
+    return QStringLiteral("获取官方版本列表失败，请稍后重试。");
+}
+
 qint64 boundedQint64(std::uint64_t value)
 {
     const auto limit = static_cast<std::uint64_t>(std::numeric_limits<qint64>::max());
@@ -159,7 +233,76 @@ HomePage::HomePage(QWidget* parent)
     auto* modpackLayout = new QVBoxLayout(m_modpackSection);
     modpackLayout->setContentsMargins(0, 0, 0, 8);
     modpackLayout->setSpacing(6);
-    auto* modpackTitle = new QLabel(QStringLiteral("整合包"), m_modpackSection);
+
+    m_vanillaSection = new QWidget(m_modpackSection);
+    m_vanillaSection->setObjectName(QStringLiteral("VanillaSection"));
+    auto* vanillaLayout = new QVBoxLayout(m_vanillaSection);
+    vanillaLayout->setContentsMargins(0, 0, 0, 0);
+    vanillaLayout->setSpacing(6);
+    auto* vanillaTitle = new QLabel(QStringLiteral("原版游戏"), m_vanillaSection);
+    vanillaTitle->setObjectName(QStringLiteral("SectionTitle"));
+    vanillaLayout->addWidget(vanillaTitle);
+    auto* vanillaNote = new QLabel(
+        QStringLiteral("选择官方正式版本安装；没有整合包时也可以直接开始。"),
+        m_vanillaSection);
+    vanillaNote->setObjectName(QStringLiteral("DetailNote"));
+    vanillaNote->setWordWrap(true);
+    vanillaLayout->addWidget(vanillaNote);
+
+    auto* vanillaRow = new QHBoxLayout();
+    vanillaRow->setContentsMargins(0, 2, 0, 0);
+    vanillaRow->setSpacing(8);
+    m_vanillaVersion = new QComboBox(m_vanillaSection);
+    m_vanillaVersion->setObjectName(QStringLiteral("VanillaVersionCombo"));
+    m_vanillaVersion->setAccessibleName(QStringLiteral("原版版本"));
+    m_vanillaVersion->setStyleSheet(
+        QStringLiteral(
+            "QComboBox { min-height: 34px; padding: 0 8px; background: %1;"
+            " border: 1px solid %2; border-radius: 7px; color: %3; font-size: 12.5px; }"
+            "QComboBox:focus { border: 2px solid %4; padding: 0 7px; }"
+            "QComboBox:disabled { background: %5; color: %6; border-color: %2; }")
+            .arg(QLatin1String(theme::kSurface), QLatin1String(theme::kLine),
+                 QLatin1String(theme::kInk), QLatin1String(theme::kFocus),
+                 QLatin1String(theme::kSunken), QLatin1String(theme::kDisabledText)));
+    m_vanillaInstall = new QPushButton(QStringLiteral("安装原版"), m_vanillaSection);
+    m_vanillaInstall->setObjectName(QStringLiteral("DialogAction"));
+    m_vanillaInstall->setCursor(Qt::PointingHandCursor);
+    m_vanillaInstall->setAutoDefault(false);
+    m_vanillaInstall->setAccessibleName(QStringLiteral("安装原版"));
+    m_vanillaReload = new QPushButton(QStringLiteral("获取版本列表"), m_vanillaSection);
+    m_vanillaReload->setObjectName(QStringLiteral("DialogAction"));
+    m_vanillaReload->setCursor(Qt::PointingHandCursor);
+    m_vanillaReload->setAutoDefault(false);
+    m_vanillaReload->setAccessibleName(QStringLiteral("获取版本列表"));
+    vanillaRow->addWidget(m_vanillaVersion, 1);
+    vanillaRow->addWidget(m_vanillaInstall, 0);
+    vanillaRow->addWidget(m_vanillaReload, 0);
+    vanillaLayout->addLayout(vanillaRow);
+
+    m_vanillaVersionsError = new QLabel(m_vanillaSection);
+    m_vanillaVersionsError->setObjectName(QStringLiteral("VanillaVersionsError"));
+    m_vanillaVersionsError->setTextFormat(Qt::PlainText);
+    m_vanillaVersionsError->setWordWrap(true);
+    m_vanillaVersionsError->setStyleSheet(
+        QStringLiteral(
+            "QLabel { color: %1; background: %2; border: 1px solid %3;"
+            " border-radius: 7px; padding: 7px 9px; font-size: 12px; }")
+            .arg(QLatin1String(theme::kError), QLatin1String(theme::kErrorSoft),
+                 QLatin1String(theme::kErrorLine)));
+    m_vanillaVersionsError->hide();
+    vanillaLayout->addWidget(m_vanillaVersionsError);
+    m_vanillaHint = new QLabel(m_vanillaSection);
+    m_vanillaHint->setObjectName(QStringLiteral("VanillaHint"));
+    m_vanillaHint->setTextFormat(Qt::PlainText);
+    m_vanillaHint->setWordWrap(true);
+    m_vanillaHint->setStyleSheet(
+        QStringLiteral("QLabel { color: %1; font-size: 11.5px; }")
+            .arg(QLatin1String(theme::kMuted)));
+    m_vanillaHint->hide();
+    vanillaLayout->addWidget(m_vanillaHint);
+    modpackLayout->addWidget(m_vanillaSection);
+
+    auto* modpackTitle = new QLabel(QStringLiteral("或导入整合包"), m_modpackSection);
     modpackTitle->setObjectName(QStringLiteral("SectionTitle"));
     modpackLayout->addWidget(modpackTitle);
 
@@ -369,6 +512,29 @@ HomePage::HomePage(QWidget* parent)
             emit modpackRetryRequested(m_modpackSnapshot.taskId);
         }
     });
+    connect(m_vanillaInstall, &QPushButton::clicked, this, [this]() {
+        if (!m_modpackAvailable || importLocked()) {
+            return;
+        }
+        const QString version = m_vanillaVersion->currentData().toString();
+        if (version.isEmpty()) {
+            showVanillaHint(QStringLiteral("请先选择要安装的原版版本。"));
+            return;
+        }
+        showVanillaHint(QString());
+        emit vanillaInstallRequested(version);
+    });
+    connect(m_vanillaReload, &QPushButton::clicked, this, [this]() {
+        if (!m_modpackAvailable || importLocked() || m_modpackSnapshot.versionsLoading) {
+            return;
+        }
+        showVanillaHint(QString());
+        emit vanillaVersionsReloadRequested();
+    });
+    connect(m_vanillaVersion, &QComboBox::currentIndexChanged, this, [this]() {
+        showVanillaHint(QString());
+        updateVanillaUi();
+    });
 
     setAcceptDrops(true);
     setSnapshot({});
@@ -412,8 +578,9 @@ void HomePage::setSnapshot(const application::HomeSnapshot& snapshot)
     if (!snapshot.account.providerLabel.isEmpty()) {
         accountValue += QStringLiteral(" · ") + snapshot.account.providerLabel;
     }
-    const bool accountReady = snapshot.account.state == application::AccountState::SignedIn
-        || snapshot.account.state == application::AccountState::Offline;
+    const bool accountReady = snapshot.offlineMode
+        ? snapshot.account.state == application::AccountState::Offline
+        : snapshot.account.state == application::AccountState::SignedIn;
     m_accountRow->setData(snapshot.offlineMode ? QStringLiteral("离线身份") : QStringLiteral("账号"),
                           accountValue,
                           copy::accountStateText(snapshot.account.state),
@@ -452,10 +619,19 @@ void HomePage::setSnapshot(const application::HomeSnapshot& snapshot)
     if (snapshot.offlineMode) {
         m_footnote->setText(
             QStringLiteral("首次点击启动才会完整校验文件与 Java；游戏运行时可关闭窗口，游戏会继续运行。"));
-    } else {
+    } else if (snapshot.sessionActive) {
+        m_footnote->setText(
+            QStringLiteral("游戏运行中，关闭启动器窗口不会结束游戏。"));
+    } else if (snapshot.account.state == application::AccountState::SignedIn) {
         m_footnote->setText(snapshot.launch.closeLauncherAfterLaunch
                                 ? QStringLiteral("启动后可以关闭启动器，游戏会继续运行。")
                                 : QStringLiteral("启动后启动器会保持打开。"));
+    } else if (snapshot.account.busy) {
+        m_footnote->setText(
+            QStringLiteral("正在等待微软账号授权完成，完成后不会自动启动游戏。"));
+    } else {
+        m_footnote->setText(
+            QStringLiteral("登录微软账号后可启动已安装的游戏；游戏不会自动启动。"));
     }
 
     applyActionBar();
@@ -516,6 +692,8 @@ void HomePage::updateModpackUi()
     const bool active = application::importActive(phase);
     const bool launchBusy = m_modpackSnapshot.launchActive || m_snapshot.sessionActive;
     const bool locked = active || launchBusy;
+    const QString vanillaVersion = m_modpackSnapshot.vanillaVersion;
+    const bool vanilla = !vanillaVersion.isEmpty();
     m_modpackDropZone->setVisible(!active);
 
     {
@@ -547,27 +725,34 @@ void HomePage::updateModpackUi()
 
     m_modpackPick->setEnabled(!locked);
     if (active) {
-        m_modpackPick->setText(QStringLiteral("正在导入…"));
+        m_modpackPick->setText(vanilla ? QStringLiteral("正在安装原版…")
+                                       : QStringLiteral("正在导入…"));
     } else if (launchBusy) {
         m_modpackPick->setText(QStringLiteral("游戏运行中"));
     } else {
         m_modpackPick->setText(QStringLiteral("选择整合包…"));
     }
     m_modpackDropZone->setToolTip(
-        locked ? QStringLiteral("正在导入或游戏运行中，暂时不能导入新的整合包。")
+        locked ? QStringLiteral("正在安装或游戏运行中，暂时不能导入新的整合包。")
                : QStringLiteral("拖入一个本地 .zip 或 .mrpack 文件。"));
 
     QString packName = m_modpackSnapshot.packName;
-    if (packName.isEmpty() && !m_modpackSnapshot.archivePath.isEmpty()) {
-        packName = QFileInfo(m_modpackSnapshot.archivePath).fileName();
-    }
-    if (packName.isEmpty()) {
-        packName = phase == application::ImportPhase::Idle
-            ? QStringLiteral("尚未选择整合包")
-            : QStringLiteral("正在识别整合包…");
+    if (vanilla) {
+        if (packName.isEmpty()) {
+            packName = QStringLiteral("Minecraft %1 原版").arg(vanillaVersion);
+        }
+    } else {
+        if (packName.isEmpty() && !m_modpackSnapshot.archivePath.isEmpty()) {
+            packName = QFileInfo(m_modpackSnapshot.archivePath).fileName();
+        }
+        if (packName.isEmpty()) {
+            packName = phase == application::ImportPhase::Idle
+                ? QStringLiteral("尚未选择整合包")
+                : QStringLiteral("正在识别整合包…");
+        }
     }
     m_modpackPackName->setText(packName);
-    m_modpackPhase->setText(importPhaseText(phase));
+    m_modpackPhase->setText(vanilla ? vanillaPhaseText(phase) : importPhaseText(phase));
 
     const qint64 completedFiles = boundedQint64(m_modpackSnapshot.progress.completedFiles);
     const qint64 totalFiles = boundedQint64(m_modpackSnapshot.progress.totalFiles);
@@ -617,12 +802,17 @@ void HomePage::updateModpackUi()
     if (phase == application::ImportPhase::Failed) {
         if (m_modpackSnapshot.error.has_value()) {
             const application::ImportFailure& failure = m_modpackSnapshot.error.value();
-            errorText = importErrorText(failure.code);
-            if (!failure.context.trimmed().isEmpty()) {
-                errorText += QLatin1Char('\n') + failure.context;
+            if (vanilla) {
+                errorText = vanillaErrorText(failure.code);
+            } else {
+                errorText = importErrorText(failure.code);
+                if (!failure.context.trimmed().isEmpty()) {
+                    errorText += QLatin1Char('\n') + failure.context;
+                }
             }
         } else {
-            errorText = QStringLiteral("导入未完成，请稍后重试。");
+            errorText = vanilla ? QStringLiteral("原版安装未完成，请稍后重试。")
+                                : QStringLiteral("导入未完成，请稍后重试。");
         }
     }
     m_modpackError->setText(errorText);
@@ -632,11 +822,12 @@ void HomePage::updateModpackUi()
         || phase == application::ImportPhase::PreparingGame
         || phase == application::ImportPhase::InstallingFiles;
     if (cancelable) {
-        m_modpackCancel->setText(QStringLiteral("取消导入"));
+        m_modpackCancel->setText(vanilla ? QStringLiteral("取消安装")
+                                         : QStringLiteral("取消导入"));
         m_modpackCancel->setEnabled(!launchBusy);
         m_modpackCancel->setToolTip(
-            launchBusy ? QStringLiteral("游戏运行中，暂时不能取消导入。")
-                       : QStringLiteral("停止当前导入，等待任务确认取消。"));
+            launchBusy ? QStringLiteral("游戏运行中，暂时不能取消安装。")
+                       : QStringLiteral("停止当前安装，等待任务确认取消。"));
         m_modpackCancel->show();
     } else if (phase == application::ImportPhase::Committing) {
         m_modpackCancel->setText(QStringLiteral("正在完成安装"));
@@ -656,11 +847,130 @@ void HomePage::updateModpackUi()
         || phase == application::ImportPhase::Cancelled;
     m_modpackRetry->setVisible(retryable);
     m_modpackRetry->setEnabled(retryable && !launchBusy);
+    m_modpackRetry->setText(vanilla ? QStringLiteral("重试安装原版")
+                                    : QStringLiteral("重试导入"));
+    m_modpackRetry->setAccessibleName(m_modpackRetry->text());
     m_modpackRetry->setToolTip(
-        launchBusy ? QStringLiteral("游戏运行中，暂时不能重试导入。")
-                   : QStringLiteral("重新读取整合包并导入。"));
+        launchBusy ? QStringLiteral("游戏运行中，暂时不能重试安装。")
+                   : (vanilla ? QStringLiteral("重新安装这个原版版本。")
+                              : QStringLiteral("重新读取整合包并导入。")));
 
+    m_modpackNote->setText(
+        vanilla ? QStringLiteral("原版安装完成后请手动启动游戏。")
+                : QStringLiteral("可选客户端内容默认随包安装；安装完成后请手动启动游戏。"));
     m_modpackHint->setVisible(m_modpackAvailable && !m_modpackHint->text().isEmpty());
+    updateVanillaUi();
+}
+
+void HomePage::updateVanillaUi()
+{
+    if (!m_vanillaSection) {
+        return;
+    }
+    m_vanillaSection->setVisible(m_modpackAvailable);
+    if (!m_modpackAvailable) {
+        return;
+    }
+
+    const application::ModpackSnapshot& snapshot = m_modpackSnapshot;
+    const bool locked = importLocked();
+    const bool loading = snapshot.versionsLoading;
+    const bool hasError = snapshot.versionsError.has_value();
+    const QStringList versions = snapshot.vanillaVersions;
+
+    const QString previous = m_vanillaVersion->currentData().toString();
+    if (versions.isEmpty()) {
+        const QString placeholder = loading ? QStringLiteral("正在获取版本列表…")
+            : hasError ? QStringLiteral("版本列表获取失败")
+                       : QStringLiteral("暂无可用版本");
+        if (m_vanillaVersion->count() == 1
+            && m_vanillaVersion->itemData(0).toString().isEmpty()) {
+            const QSignalBlocker blocker(m_vanillaVersion);
+            m_vanillaVersion->setItemText(0, placeholder);
+        } else {
+            const QSignalBlocker blocker(m_vanillaVersion);
+            m_vanillaVersion->clear();
+            m_vanillaVersion->addItem(placeholder, QString());
+            m_vanillaVersion->setCurrentIndex(0);
+        }
+    } else {
+        bool same = m_vanillaVersion->count() == versions.size();
+        for (int i = 0; same && i < versions.size(); ++i) {
+            same = m_vanillaVersion->itemData(i).toString() == versions.at(i);
+        }
+        if (!same) {
+            const QSignalBlocker blocker(m_vanillaVersion);
+            m_vanillaVersion->clear();
+            for (const QString& version : versions) {
+                m_vanillaVersion->addItem(version, version);
+            }
+            const int selected = m_vanillaVersion->findData(previous);
+            m_vanillaVersion->setCurrentIndex(selected >= 0 ? selected : 0);
+        }
+    }
+
+    const QString selected = m_vanillaVersion->currentData().toString();
+    m_vanillaVersion->setEnabled(!locked && !loading && !versions.isEmpty());
+    m_vanillaInstall->setEnabled(!locked && !loading && !selected.isEmpty());
+    m_vanillaReload->setEnabled(!locked && !loading);
+    const QString reloadText = loading ? QStringLiteral("正在获取…")
+        : hasError ? QStringLiteral("重试版本列表")
+                   : (versions.isEmpty() ? QStringLiteral("获取版本列表")
+                                         : QStringLiteral("刷新版本列表"));
+    m_vanillaReload->setText(reloadText);
+    m_vanillaReload->setAccessibleName(reloadText);
+    m_vanillaReload->setToolTip(
+        loading ? QStringLiteral("正在获取官方正式版本列表。")
+                : QStringLiteral("从官方版本列表重新获取正式版本。"));
+
+    if (hasError) {
+        m_vanillaVersionsError->setText(
+            versionListErrorText(snapshot.versionsError->code));
+        m_vanillaVersionsError->show();
+    } else {
+        m_vanillaVersionsError->hide();
+    }
+
+    QString hint;
+    if (loading) {
+        hint = QStringLiteral("正在获取官方正式版本列表…");
+    } else if (hasError) {
+        hint.clear();
+    } else if (!snapshot.vanillaVersion.isEmpty()) {
+        const QString version = snapshot.vanillaVersion;
+        if (snapshot.phase == application::ImportPhase::Succeeded) {
+            hint = QStringLiteral("Minecraft %1 原版安装完成，可在上方切换实例后手动启动。")
+                       .arg(version);
+        } else if (snapshot.phase == application::ImportPhase::Failed) {
+            hint = QStringLiteral("原版安装失败，可重试或重新选择版本。");
+        } else if (snapshot.phase == application::ImportPhase::Cancelled) {
+            hint = QStringLiteral("原版安装已取消，可重试。");
+        } else if (application::importActive(snapshot.phase)) {
+            hint = QStringLiteral("正在安装 Minecraft %1 原版…").arg(version);
+        } else {
+            hint = QStringLiteral("已选择 Minecraft %1；安装完成后手动启动。").arg(version);
+        }
+    } else if (locked) {
+        hint = QStringLiteral("游戏运行中，暂时不能安装原版。");
+    } else if (versions.isEmpty()) {
+        hint = QStringLiteral("还没有可用的正式版本，可重试版本列表。");
+    } else {
+        hint = QStringLiteral("选择官方正式版本后安装；安装完成后手动启动。");
+    }
+    m_vanillaHint->setText(hint);
+    m_vanillaHint->setVisible(!hint.isEmpty());
+}
+
+void HomePage::showVanillaHint(const QString& text)
+{
+    if (!m_vanillaHint) {
+        return;
+    }
+    m_vanillaHint->setText(text);
+    m_vanillaHint->setVisible(m_modpackAvailable && !text.isEmpty());
+    if (!text.isEmpty() && scrollArea()) {
+        scrollArea()->ensureWidgetVisible(m_vanillaHint);
+    }
 }
 
 bool HomePage::importLocked() const
@@ -856,6 +1166,23 @@ void HomePage::focusPrimaryAction()
     }
 }
 
+void HomePage::focusVanillaInstaller()
+{
+    if (!m_modpackAvailable || !m_vanillaSection) {
+        return;
+    }
+    if (scrollArea()) {
+        scrollArea()->ensureWidgetVisible(m_vanillaSection);
+    }
+    if (m_vanillaVersion->isEnabled() && !m_modpackSnapshot.vanillaVersions.isEmpty()) {
+        m_vanillaVersion->setFocus(Qt::OtherFocusReason);
+        return;
+    }
+    if (m_vanillaReload->isEnabled()) {
+        m_vanillaReload->setFocus(Qt::OtherFocusReason);
+    }
+}
+
 void HomePage::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
@@ -900,8 +1227,20 @@ QString HomePage::actionTitle(const application::HomeSnapshot& snapshot) const
         }
         return QStringLiteral("本地离线");
     }
+    if (snapshot.sessionActive) {
+        return QStringLiteral("游戏运行中");
+    }
+    if (snapshot.account.state == application::AccountState::SigningIn
+        || snapshot.account.busy) {
+        return QStringLiteral("正在登录");
+    }
     if (snapshot.primaryAction == application::PrimaryAction::Launch) {
         return QStringLiteral("准备就绪");
+    }
+    if (snapshot.primaryAction == application::PrimaryAction::SignIn) {
+        return snapshot.account.state == application::AccountState::SignedOut
+            ? QStringLiteral("登录微软账号")
+            : QStringLiteral("需要重新登录");
     }
     return QStringLiteral("下一步");
 }

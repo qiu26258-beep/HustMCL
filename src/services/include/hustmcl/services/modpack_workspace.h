@@ -16,6 +16,8 @@ public:
     QtModpackWorkspace(QString root,QString bundledJava,Options options,QObject* parent=nullptr);
     ~QtModpackWorkspace() override;
     void inspect(const QString&,const QString&,std::function<void(application::ImportResult<core::Modpack>)>) override;
+    void inspectVanilla(const QString&,const QString&,std::function<void(application::ImportResult<core::Modpack>)>) override;
+    void listVanillaVersions(std::function<void(application::ImportResult<QStringList>)>) override;
     void prepareGame(const QString&,Progress,Done) override;
     void installFiles(const QString&,Progress,Done) override;
     void commit(const QString&,std::function<void(application::ImportResult<application::InstalledInstance>)>) override;

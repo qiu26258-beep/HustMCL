@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QListWidgetItem>
+#include <QPixmap>
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QStyle>
@@ -43,6 +44,16 @@ Sidebar::Sidebar(QWidget* parent)
     auto* mark = new QLabel(QStringLiteral("H"), this);
     mark->setObjectName(QStringLiteral("BrandMark"));
     mark->setAlignment(Qt::AlignCenter);
+    {
+        // The product icon doubles as the brand mark; "H" stays as the fallback.
+        QPixmap icon(QStringLiteral(":/brand/hustmcl-128.png"));
+        if (!icon.isNull()) {
+            const qreal ratio = mark->devicePixelRatioF();
+            icon = icon.scaled(QSize(38, 38) * ratio, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            icon.setDevicePixelRatio(ratio);
+            mark->setPixmap(icon);
+        }
+    }
     auto* brandText = new QVBoxLayout();
     brandText->setContentsMargins(0, 0, 0, 0);
     brandText->setSpacing(1);
@@ -59,7 +70,7 @@ Sidebar::Sidebar(QWidget* parent)
     m_badge = new QLabel(QStringLiteral("界面演示 · 样例数据"), this);
     m_badge->setObjectName(QStringLiteral("DemoBadge"));
     m_badge->setAlignment(Qt::AlignCenter);
-    m_badge->setToolTip(QStringLiteral("当前窗口只演示页面状态，未接入真实登录、下载或游戏启动。"));
+    m_badge->setToolTip(QStringLiteral("当前窗口只演示页面状态，不执行真实账号、下载或游戏启动操作。"));
     layout->addWidget(m_badge);
 
     auto* divider = new QFrame(this);
@@ -154,7 +165,7 @@ Sidebar::Sidebar(QWidget* parent)
     m_accountLink->setAccessibleName(QStringLiteral("账号与授权"));
     layout->addWidget(m_accountLink);
 
-    m_accountNote = new QLabel(QStringLiteral("登录、下载与启动尚未接入"), this);
+    m_accountNote = new QLabel(QStringLiteral("演示窗口不会执行账号、下载或启动操作"), this);
     m_accountNote->setObjectName(QStringLiteral("DemoNote"));
     m_accountNote->setWordWrap(true);
     layout->addWidget(m_accountNote);
@@ -185,9 +196,6 @@ void Sidebar::setRealMode(bool realMode)
 {
     m_realMode = realMode;
     if (realMode) {
-        m_badge->setText(QStringLiteral("本地离线体验"));
-        m_badge->setToolTip(
-            QStringLiteral("本地离线单机启动；不使用微软账号，也不下载其他版本。"));
         m_nav->item(kPageInstall)->setText(QStringLiteral("02    实例与检查"));
         m_nav->item(kPageSettings)->setText(QStringLiteral("03    设置"));
         m_nav->item(kPageLogs)->setText(QStringLiteral("04    日志与错误"));
@@ -201,13 +209,12 @@ void Sidebar::setRealMode(bool realMode)
         m_navNote->setText(QStringLiteral("首次启动会检查本地文件并检测 Java"));
         m_navNote->setToolTip(
             QStringLiteral("启动前会先确认文件与 Java，准备好后再打开游戏。"));
-        m_accountNote->setText(QStringLiteral("离线身份仅用于本地游戏，不是正版登录。"));
-        m_footer->setText(QStringLiteral("HustMCL 0.1 · 本地离线"));
-        updateAccountLink();
+        applyModeCopy();
+        updateAccountPresentation();
     } else {
         m_badge->setText(QStringLiteral("界面演示 · 样例数据"));
         m_badge->setToolTip(
-            QStringLiteral("当前窗口只演示页面状态，未接入真实登录、下载或游戏启动。"));
+            QStringLiteral("当前窗口只演示页面状态，不执行真实账号、下载或游戏启动操作。"));
         m_nav->item(kPageInstall)->setText(QStringLiteral("02    安装游戏"));
         for (int row = kPageSettings; row <= kPageLogs; ++row) {
             auto* item = m_nav->item(row);
@@ -217,7 +224,7 @@ void Sidebar::setRealMode(bool realMode)
         updateMarketItem();
         m_navNote->setText(QStringLiteral("设置与日志将在后续批次提供"));
         m_navNote->setToolTip(QString());
-        m_accountNote->setText(QStringLiteral("登录、下载与启动尚未接入"));
+        m_accountNote->setText(QStringLiteral("演示窗口不会执行账号、下载或启动操作"));
         m_footer->setText(QStringLiteral("HustMCL 0.1 · 界面演示"));
         updateAccountLink();
     }
@@ -251,21 +258,53 @@ void Sidebar::updateMarketItem()
     }
 }
 
-void Sidebar::setAccount(const application::AccountSnapshot& account)
+void Sidebar::setAccount(const application::AccountSnapshot& account, bool offlineMode)
 {
     m_account = account;
-    const QString name = account.displayName.isEmpty()
-        ? (m_realMode ? QStringLiteral("本地玩家") : QStringLiteral("未登录"))
-        : account.displayName;
+    m_offlineMode = offlineMode;
+    updateAccountPresentation();
+}
+
+void Sidebar::updateAccountPresentation()
+{
+    const bool offline = m_realMode && m_offlineMode;
+    const QString name = m_account.displayName.isEmpty()
+        ? (m_realMode ? (offline ? QStringLiteral("本地玩家") : QStringLiteral("尚未登录"))
+                      : QStringLiteral("未登录"))
+        : m_account.displayName;
     m_accountName->setText(name);
-    m_avatar->setText(name.left(1));
-    m_accountState->setText(copy::accountStateText(account.state));
-    const bool ready = account.state == application::AccountState::SignedIn
-        || account.state == application::AccountState::Offline;
+    m_avatar->setText(name.isEmpty() ? QStringLiteral("H") : name.left(1));
+    m_accountState->setText(copy::accountStateText(m_account.state));
+    const bool ready = offline
+        ? m_account.state == application::AccountState::Offline
+        : m_account.state == application::AccountState::SignedIn;
     m_accountState->setProperty("ok", ready);
     m_accountState->style()->unpolish(m_accountState);
     m_accountState->style()->polish(m_accountState);
+    applyModeCopy();
     updateAccountLink();
+}
+
+void Sidebar::applyModeCopy()
+{
+    if (!m_realMode) {
+        return;
+    }
+    if (m_offlineMode) {
+        m_badge->setText(QStringLiteral("本地离线体验"));
+        m_badge->setToolTip(
+            QStringLiteral("本地离线单机启动；不使用微软账号，也不下载其他版本。"));
+        m_accountNote->setText(QStringLiteral("离线身份仅用于本地游戏，不是正版登录。"));
+        m_footer->setText(QStringLiteral("HustMCL 0.1 · 本地离线"));
+        return;
+    }
+    m_badge->setText(QStringLiteral("微软账号"));
+    m_badge->setToolTip(
+        QStringLiteral("使用自己的微软账号登录；游戏仍由你手动启动。"));
+    m_accountNote->setText(m_account.state == application::AccountState::SignedIn
+                               ? QStringLiteral("已连接微软账号，游戏可正版启动。")
+                               : QStringLiteral("登录微软账号后可使用正版启动。"));
+    m_footer->setText(QStringLiteral("HustMCL 0.1 · 正版账号"));
 }
 
 void Sidebar::updateAccountLink()
@@ -274,8 +313,16 @@ void Sidebar::updateAccountLink()
         return;
     }
     if (m_realMode) {
-        m_accountLink->setText(QStringLiteral("修改离线身份 →"));
-        m_accountLink->setAccessibleName(QStringLiteral("修改离线身份"));
+        if (m_offlineMode) {
+            m_accountLink->setText(QStringLiteral("修改离线身份 →"));
+            m_accountLink->setAccessibleName(QStringLiteral("修改离线身份"));
+            return;
+        }
+        const bool signedIn = m_account.state == application::AccountState::SignedIn;
+        m_accountLink->setText(signedIn ? QStringLiteral("账号与授权 →")
+                                       : QStringLiteral("登录账号 →"));
+        m_accountLink->setAccessibleName(signedIn ? QStringLiteral("账号与授权")
+                                                  : QStringLiteral("登录账号"));
         return;
     }
     const bool signedIn = m_account.state == application::AccountState::SignedIn;

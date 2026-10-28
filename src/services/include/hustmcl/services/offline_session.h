@@ -4,6 +4,7 @@
 #include <QProcess>
 #include <QLockFile>
 #include <QTimer>
+#include <QFile>
 #include <memory>
 
 namespace hustmcl::services {
@@ -28,11 +29,15 @@ public:
 private:
     void finish(bool normal, int exitCode);
     void fail(application::GameProcessError error);
+    void captureOutput(bool standardError, bool final = false);
     QString root_, logBase_;
     QProcess game_;
     QTimer startTimeout_;
     std::unique_ptr<QLockFile> lock_;
     Observer observer_;
     application::OfflineLaunch identity_;
+    QFile stdoutLog_, stderrLog_;
+    QByteArray stdoutBuffer_, stderrBuffer_;
+    bool logFailed_ = false;
 };
 }
