@@ -137,12 +137,24 @@ begin
   Result := IsX64OS;
 end;
 
+function RegisteredInstallation(): Boolean;
+var
+  RegisteredRoot: String;
+begin
+  { Only a directory this AppId already registered may be upgraded in place. }
+  Result := False;
+  if not RegQueryStringValue(HKCU64,
+      'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#InstallId}_is1',
+      'Inno Setup: App Path', RegisteredRoot) then exit;
+  Result := CompareText(RegisteredRoot, ExpandConstant('{app}')) = 0;
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   Result := '';
   ReusePayload := False;
   if not SafePath(ExpandConstant('{app}')) or FileExists(ExpandConstant('{app}')) then begin
-    Result := 'Installation directory already exists. Open the installed HustMCL shortcut. This build does not support upgrades.';
+    Result := 'Installation directory already exists. Open the installed HustMCL shortcut.';
     exit;
   end;
   if DirExists(ExpandConstant('{app}')) then begin
@@ -151,12 +163,17 @@ begin
     except
       ReusePayload := False;
     end;
-    if not ReusePayload then begin
-      Result := 'Installation directory already exists. Open the installed HustMCL shortcut. This build does not support upgrades.';
-      Log('Existing installation is unrecognized, different or damaged; refusing changes.');
+    if ReusePayload then
+      Log('Verified existing payload; skipping payload writes.')
+    else if RegisteredInstallation() then
+      { Upgrade or repair: replace payload files, keep instances, saves and
+        anything else this installer did not write. }
+      Log('Upgrading this registered installation; payload will be replaced, personal files kept.')
+    else begin
+      Result := 'Installation directory already exists but was not created by HustMCL. Move or rename it, then run this installer again.';
+      Log('Existing directory is not a registered HustMCL installation; refusing changes.');
       exit;
     end;
-    Log('Verified existing payload; skipping payload writes.');
   end;
   if not ShortcutAvailable(ExpandConstant('{#DesktopRoot}\{#ShortcutName}.lnk')) or
      not ShortcutAvailable(ExpandConstant('{#ProgramsRoot}\{#ShortcutName}.lnk')) then

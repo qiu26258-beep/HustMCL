@@ -78,11 +78,17 @@ def main():
     run("legacy-adoption")
     assert marker.exists(), "Registered legacy installation was not adopted"
     assert (destination / "hustmcl_desktop.exe").stat().st_mtime_ns == original
-    marker_bytes = marker.read_bytes()
+    # A registered installation holding another package must be upgraded in
+    # place: refusing would strand users whose data directory outlives the
+    # uninstaller.
+    (destination / "component.dll").write_bytes(b"stale component")
     marker.write_bytes(b"different-package")
-    run("different-package", expected=7)
-    assert marker.read_bytes() == b"different-package"
-    marker.write_bytes(marker_bytes)
+    run("different-package")
+    assert marker.read_bytes() != b"different-package", "Upgrade kept the foreign marker"
+    assert digest(marker) == digest(manifest), "Upgrade did not record the new package"
+    assert (destination / "component.dll").read_bytes() == b"test component", \
+        "Upgrade left stale payload files"
+    assert world.read_bytes() == b"personal data must survive", "Upgrade changed personal data"
     # Interactive default must start launcher, not the game. Wait for file marker below.
     import time
     if not args.skip_interactive:
@@ -95,9 +101,8 @@ def main():
     damaged = destination / "component.dll"
     saved = damaged.read_bytes()
     damaged.write_bytes(b"damaged")
-    run("damaged", expected=7)
-    assert damaged.read_bytes() == b"damaged"
-    damaged.write_bytes(saved)
+    run("damaged")
+    assert damaged.read_bytes() == saved, "Damaged installation was not repaired"
     saved_link = shortcut.read_bytes()
     shortcut.write_bytes(b"foreign shortcut")
     run("shortcut-conflict", expected=7)
@@ -116,8 +121,8 @@ def main():
     assert not shortcut.exists()
     assert world.exists() and digest(world) == before, "Uninstall changed personal data"
     report = {"status": "passed", "scenarios": ["unknown-directory", "first-install", "repeat-no-payload-writes",
-        "shortcut-recovery", "registered-legacy-adoption", "different-package-refused",
-        "silent-no-launch", "damaged-install-refused",
+        "shortcut-recovery", "registered-legacy-adoption", "different-package-upgrade",
+        "silent-no-launch", "damaged-install-repaired",
         "foreign-shortcut-preserved", "uninstall-preserves-personal-data"], "installId": install_id,
         "interactiveTested": not args.skip_interactive, "marketChannel": args.market_channel}
     if not args.skip_interactive:
