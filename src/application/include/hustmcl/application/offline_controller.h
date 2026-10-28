@@ -39,6 +39,7 @@ public:
     void requestSignOut() override;
     void requestCancelSignIn() override;
     void setAccountController(AccountController* account);
+    bool setOfflineMode(bool offline) override;
     bool setPlayerName(const QString& name) override;
     bool setMemoryMb(int memoryMb) override;
     // Applies stored preferences without writing them back; invalid fields are rejected individually.
@@ -62,7 +63,8 @@ private:
     bool importActive_ = false;
     SettingsStore* store_ = nullptr;
     AccountController* account_ = nullptr;
-    QString offlinePlayerName_;
-    void persist();
+    QString offlinePlayerName_ = QStringLiteral("HustPlayer");
+    bool offlineSelected_ = false;
+    bool persist(const LauncherSettings& settings);
 };
 }

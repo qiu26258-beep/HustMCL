@@ -196,14 +196,20 @@ MainWindow::MainWindow(application::FrontendGateway* gateway, Mode mode, QWidget
         if (accepted) {
             m_settings->setSaveResult(
                 true,
-                QStringLiteral("已应用，本次启动器打开期间生效。"));
+                QStringLiteral("离线名已应用。"));
             refreshFromGateway();
         } else {
             m_settings->setSaveResult(
                 false,
                 QStringLiteral("离线名无效：仅支持 1–16 位英文字母、数字或下划线，"
-                               "不能使用中文或空格。"));
+                               "不能使用中文或空格。若格式正确，请检查数据目录写入权限。"));
         }
+    });
+    connect(m_settings, &ui::SettingsPage::offlineModeRequested, this, [this](bool offline) {
+        if (!m_homeSnapshot.canChangeLoginMode) return;
+        const bool accepted = m_gateway->setOfflineMode(offline);
+        refreshFromGateway();
+        m_settings->setModeChangeResult(accepted);
     });
     connect(m_settings, &ui::SettingsPage::signInRequested, this, [this]() {
         if (m_homeSnapshot.offlineMode || m_homeSnapshot.sessionActive

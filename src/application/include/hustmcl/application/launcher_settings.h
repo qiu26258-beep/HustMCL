@@ -12,6 +12,7 @@ inline constexpr int kDefaultMemoryMb = 2048;
 struct LauncherSettings {
     QString playerName = QStringLiteral("HustPlayer");
     int memoryMb = kDefaultMemoryMb;
+    bool offlineMode = false;
     friend bool operator==(const LauncherSettings&, const LauncherSettings&) = default;
 };
 

@@ -331,7 +331,9 @@ int main(int argc, char** argv)
     hustmcl::application::AccountController account(accountService, credentialStore);
     hustmcl::application::OfflineController controller(
         preparation, process, dataRoot, gameVersion);
-    if (const auto stored = settingsStore.load()) controller.applySettings(*stored);
+    auto settings = settingsStore.load().value_or(hustmcl::application::LauncherSettings{});
+    if (parser.isSet(offlineOption)) settings.offlineMode = true;
+    controller.applySettings(settings);
     // An explicit --username wins over the stored name for this run; it is only saved if the user later edits settings.
     if (parser.isSet(usernameOption) && !controller.setPlayerName(username)) {
         std::fprintf(stderr, "invalid offline player name\n");
@@ -340,10 +342,10 @@ int main(int argc, char** argv)
     controller.setSettingsStore(&settingsStore);
     QObject::connect(&accountService, &hustmcl::services::QtAccountService::authorizationRequired, &accountService,
         [&accountService](const QUrl& url) { if (!QDesktopServices::openUrl(url)) accountService.browserFailed(); });
-    if (!parser.isSet(offlineOption)) {
-        controller.setAccountController(&account);
-        if (!wantsScreenshot) QTimer::singleShot(0, &account, &hustmcl::application::AccountController::restore);
-    }
+    controller.setAccountController(&account);
+    if (!wantsScreenshot) QTimer::singleShot(0, &controller, [&] {
+        if (!controller.homeSnapshot().offlineMode) account.restore();
+    });
     hustmcl::services::ModrinthContentSource contentSource({});
     hustmcl::services::QtFileAcquirer contentAcquirer({30000, false});
     hustmcl::services::QtContentDownloadStore contentFiles(dataRoot, contentAcquirer);

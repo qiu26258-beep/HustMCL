@@ -43,6 +43,7 @@ OfflineController::OfflineController(LaunchPreparation& preparation, GameProcess
 }
 void OfflineController::publish()
 {
+    home_.canChangeLoginMode = account_ && !home_.sessionActive && !account_->snapshot().busy;
     const QPointer<OfflineController> guard(this);
     const auto home = home_;
     const auto install = install_;
@@ -53,14 +54,43 @@ void OfflineController::setAccountController(AccountController* account)
 {
     if (home_.sessionActive || account_ == account) return;
     if (account_) disconnect(account_, nullptr, this, nullptr);
-    offlinePlayerName_ = home_.account.displayName;
     account_ = account;
-    home_.offlineMode = account_ == nullptr;
+    home_.offlineMode = !account_ || offlineSelected_;
     if (account_) connect(account_, &AccountController::changed, this, [this] { accountChanged(); });
     accountChanged();
 }
+bool OfflineController::setOfflineMode(bool offline)
+{
+    if (!account_ || home_.sessionActive || account_->snapshot().busy) return false;
+    if (home_.offlineMode == offline) return true;
+    if (!persist({offlinePlayerName_, home_.launch.memoryMb, offline})) return false;
+    offlineSelected_ = offline;
+    home_.offlineMode = offline;
+    const QPointer<OfflineController> guard(this);
+    accountChanged();
+    // Restoring a saved account never opens the browser or starts a game.
+    if (guard && !offline) account_->restore();
+    return true;
+}
 void OfflineController::accountChanged()
 {
+    if (home_.offlineMode) {
+        home_.account = {AccountState::Offline, offlinePlayerName_, QStringLiteral("本地离线身份")};
+        home_.account.canSignIn = false;
+        if (!home_.sessionActive) {
+            const bool installed = !home_.instance.instanceId.isEmpty();
+            home_.instance.editionLabel = QStringLiteral("Java · 离线单人");
+            install_.variantLabel = QStringLiteral("Minecraft Java · 离线");
+            home_.primaryAction = PrimaryAction::Launch;
+            home_.primaryEnabled = !importActive_ && installed;
+            home_.primaryLabel = importActive_ ? QStringLiteral("正在安装…") : installed ? QStringLiteral("启动游戏") : QStringLiteral("请先安装游戏");
+            home_.statusTitle = QStringLiteral("离线玩家已就绪");
+            home_.primaryReason = installed ? QStringLiteral("将使用离线玩家启动本地游戏；不会进行微软登录。")
+                                           : QStringLiteral("请在首页安装原版或导入整合包，再手动启动。");
+        }
+        publish();
+        return;
+    }
     if (!account_) return;
     home_.account = account_->snapshot();
     if (home_.sessionActive) { publish(); return; }
@@ -78,40 +108,45 @@ void OfflineController::accountChanged()
     }
     publish();
 }
-void OfflineController::requestSignIn() { if (account_ && !home_.sessionActive) account_->signIn(); }
-void OfflineController::requestSignOut() { if (account_ && !home_.sessionActive) account_->signOut(); }
-void OfflineController::requestCancelSignIn() { if (account_) account_->cancel(); }
+void OfflineController::requestSignIn() { if (account_ && !home_.offlineMode && !home_.sessionActive) account_->signIn(); }
+void OfflineController::requestSignOut() { if (account_ && !home_.offlineMode && !home_.sessionActive) account_->signOut(); }
+void OfflineController::requestCancelSignIn() { if (account_ && !home_.offlineMode) account_->cancel(); }
 bool OfflineController::setPlayerName(const QString& name)
 {
-    if (account_ || home_.sessionActive || std::holds_alternative<OfflineLaunchError>(makeOfflineLaunch({}, name))) return false;
+    if (!home_.offlineMode || home_.sessionActive || std::holds_alternative<OfflineLaunchError>(makeOfflineLaunch({}, name))) return false;
+    if (!persist({name, home_.launch.memoryMb, offlineSelected_})) return false;
+    offlinePlayerName_ = name;
     home_.account.displayName = name;
-    persist();
     publish();
     return true;
 }
 bool OfflineController::setMemoryMb(int memoryMb)
 {
     if (home_.sessionActive || !validMemoryMb(memoryMb)) return false;
+    if (!persist({offlinePlayerName_, memoryMb, offlineSelected_})) return false;
     home_.launch.memoryMb = memoryMb;
     preparation_.setMemoryMb(memoryMb);
-    persist();
     publish();
     return true;
 }
 void OfflineController::applySettings(const LauncherSettings& settings)
 {
     if (home_.sessionActive) return;
-    if (!std::holds_alternative<OfflineLaunchError>(makeOfflineLaunch({}, settings.playerName)))
-        home_.account.displayName = settings.playerName;
+    if (!std::holds_alternative<OfflineLaunchError>(makeOfflineLaunch({}, settings.playerName))) {
+        offlinePlayerName_ = settings.playerName;
+        if (home_.offlineMode) home_.account.displayName = settings.playerName;
+    }
+    offlineSelected_ = settings.offlineMode;
+    if (account_) home_.offlineMode = offlineSelected_;
     if (validMemoryMb(settings.memoryMb)) {
         home_.launch.memoryMb = settings.memoryMb;
         preparation_.setMemoryMb(settings.memoryMb);
     }
-    publish();
+    if (account_) accountChanged(); else publish();
 }
-void OfflineController::persist()
+bool OfflineController::persist(const LauncherSettings& settings)
 {
-    if (store_) static_cast<void>(store_->save({account_ ? offlinePlayerName_ : home_.account.displayName, home_.launch.memoryMb}));
+    return !store_ || store_->save(settings);
 }
 bool OfflineController::selectInstance(const InstalledInstance& instance)
 {
@@ -151,7 +186,7 @@ void OfflineController::setImportActive(bool active)
 }
 void OfflineController::requestPrimaryAction()
 {
-    if (account_ && !home_.sessionActive && !importActive_ && !account_->session()) {
+    if (account_ && !home_.offlineMode && !home_.sessionActive && !importActive_ && !account_->session()) {
         if (home_.account.state == AccountState::SignedIn && account_->refresh()) return;
         requestSignIn(); return;
     }
@@ -204,7 +239,7 @@ void OfflineController::preparationChanged(const PreparationSnapshot& snapshot)
     case PreparationPhase::Planning:
     case PreparationPhase::Prepared:
         task.phase = TaskPhase::Ready;
-        task.phaseDetail = account_ ? QStringLiteral("正在准备正版启动参数。") : QStringLiteral("正在准备离线启动参数。");
+        task.phaseDetail = home_.offlineMode ? QStringLiteral("正在准备离线启动参数。") : QStringLiteral("正在准备正版启动参数。");
         home_.primaryLabel = QStringLiteral("准备启动…");
         break;
     case PreparationPhase::Cancelling:
@@ -243,7 +278,7 @@ void OfflineController::prepared(const QString& taskId, const core::LaunchPlan& 
 {
     if (!home_.sessionActive || launching_ || taskId != install_.task.taskId) return;
     GameLaunch identity;
-    if (account_) {
+    if (!home_.offlineMode && account_) {
         const auto* session = account_->session();
         if (!session) {
             fail(TaskErrorCode::Permission, QStringLiteral("登录已过期"), QStringLiteral("请重新登录微软账号后启动。")); return;

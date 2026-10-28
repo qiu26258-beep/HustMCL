@@ -1,16 +1,21 @@
-# HustMCL
+# HustMCL public preview
 
-面向 Windows 10 / 11 x64 的 Minecraft Java 启动器预览版。
+Windows 10/11 x64 launcher for Minecraft Java. Sign in with a Microsoft
+account that owns the game to install official versions and launch online,
+or pick a local offline identity for single-player worlds; the choice is
+kept in local settings. Modrinth-format ZIP/MRPACK packs (including PCL
+wrappers) import through the same flow. Modern Vanilla and Fabric are
+supported; Forge/NeoForge/Quilt and other pack formats are not. Minecraft
+and matching Java are downloaded on demand, and the game is always started
+by the user.
 
-[下载最新版安装器](https://github.com/qiu26258-beep/HustMCL/releases/tag/v0.1.0-preview.2)
+This release source snapshot excludes private character-derived artwork,
+Minecraft files, Java, local caches, logs, account data and user files.
+Original campus geometric decoration and icon are included. Third-party
+licenses are retained. No general project code license has been selected
+yet.
 
-安装后打开 HustMCL Accounts，使用微软账号登录并验证 Minecraft Java 版所有权，在首页选择原版版本安装，或导入支持的 Modrinth 格式 ZIP/MRPACK 整合包。游戏与匹配的 Java 按需下载，安装后需手动启动。支持现代原版和 Fabric；Forge、NeoForge、Quilt 与其他整合包格式暂不支持。
-
-安装包不包含 Minecraft、Java、账号数据或私人素材。预览版尚未完成干净 Windows 10/11 的全面兼容性验证。HustMCL 不是 Minecraft 官方产品。
-
-## 构建
-
-使用 Qt 6.10.3、MinGW 13.1 x64、CMake、Ninja 和 Python 3.10+：
+Build with Qt 6.10.3, MinGW 13.1 x64, CMake, Ninja and Python 3.10+:
 
 ```powershell
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DHUSTMCL_BUILD_DESKTOP=ON -DHUSTMCL_PUBLIC_RELEASE=ON -DBUILD_TESTING=ON -DCMAKE_PREFIX_PATH=C:/Qt/6.10.3/mingw_64
@@ -18,4 +23,7 @@ cmake --build build --parallel 2
 ctest --test-dir build --output-on-failure
 ```
 
-必须启用公开版构建选项。项目源码尚未选定通用许可证；第三方许可随安装包提供。
+The public switch is required: the local-only artwork resource is
+intentionally not shipped. The installer includes dynamically replaceable
+Qt DLLs and their notices. Matching Qt source is a separate asset on the
+same release.

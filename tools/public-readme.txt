@@ -2,6 +2,7 @@ HustMCL Preview — Windows 10 / 11 x64
 
 此安装包仅提供启动器及 Qt 运行依赖，不包含 Minecraft 游戏文件或 Java。
 支持使用微软账号登录并验证 Minecraft 游戏所有权；登录状态由 Windows 用户级加密保存，可随时退出账号。
+也可在设置中改用本地离线玩家：无需微软账号即可进行单机游戏，但不能加入要求正版验证的服务器或 Realms。
 首次打开后，可选择官方原版版本安装，或将包含 Modrinth 清单的 ZIP/MRPACK 拖入主页。
 支持现代原版及 Fabric；PCL 内嵌 modpack.mrpack 的 ZIP 也可识别。
 游戏与匹配的 Java 将按需下载；安装完成后手动点击启动。

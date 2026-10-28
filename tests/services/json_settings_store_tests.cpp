@@ -21,6 +21,13 @@ int main(int argc, char** argv) {
         require(store.save({"Steve_1", 6144}), "save creates parent directory");
         auto loaded = store.load();
         require(loaded && *loaded == LauncherSettings{"Steve_1", 6144}, "round trip");
+        require(!loaded->offlineMode, "old settings default to Microsoft mode");
+        require(store.save({"Offline_1", 3072, true}), "save offline preference");
+        require(store.load() == LauncherSettings{"Offline_1", 3072, true}, "offline name and mode survive restart");
+        write(path, R"({"schemaVersion":1,"playerName":"Old_Name","memoryMb":4096})");
+        require(store.load() == LauncherSettings{"Old_Name", 4096, false}, "schema 1 remains backward compatible");
+        write(path, R"({"schemaVersion":1,"offlineMode":"true"})");
+        require(!store.load()->offlineMode, "non-boolean mode cannot enable offline play");
         write(path, "{not json");
         require(!store.load(), "corrupt file is ignored");
         write(path, R"({"schemaVersion":2,"playerName":"Future","memoryMb":4096})");

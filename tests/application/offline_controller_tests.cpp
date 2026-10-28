@@ -146,5 +146,67 @@ int main(int argc, char** argv) {
             c.requestPrimaryAction();
             require(source3.calls.size() == 1, "signed-out retry never falls back to offline game");
         }
+        {
+            struct Accounts : AccountService {
+                Completion done;
+                int signIns = 0;
+                void signIn(Completion cb) override { ++signIns; done = std::move(cb); }
+                void refresh(const QString&, Completion cb) override { done = std::move(cb); }
+                void cancel() override {}
+            } accounts;
+            struct Credentials : CredentialStore {
+                int loads = 0, clears = 0;
+                std::variant<QString, AuthFailure> load() override { ++loads; return QString{}; }
+                bool save(const QString&) override { return true; }
+                bool clear() override { ++clears; return true; }
+            } credentials;
+            struct Store : SettingsStore {
+                bool writable = true;
+                std::optional<LauncherSettings> saved;
+                std::optional<LauncherSettings> load() override { return saved; }
+                bool save(const LauncherSettings& value) override {
+                    if (!writable) return false;
+                    saved = value; return true;
+                }
+            } store;
+            AccountController account(accounts, credentials);
+            Source s; Probe p; Process game; LaunchPreparation prep(s, p);
+            OfflineController c(prep, game, "D:/offline-switch", "26.2");
+            c.applySettings({"Saved_Offline", 4096, true});
+            c.setAccountController(&account);
+            c.setSettingsStore(&store);
+            require(c.homeSnapshot().offlineMode && c.homeSnapshot().canChangeLoginMode
+                && c.homeSnapshot().account.displayName == "Saved_Offline", "saved offline mode survives attaching Microsoft account service");
+            c.requestSignIn(); c.requestSignOut();
+            require(accounts.signIns == 0 && credentials.loads == 0 && credentials.clears == 0,
+                "offline identity never logs into Microsoft or deletes its credentials");
+            require(c.setPlayerName("Local_Player") && store.saved == LauncherSettings{"Local_Player", 4096, true},
+                "offline identity is persisted independently");
+            c.requestPrimaryAction();
+            require(!c.homeSnapshot().canChangeLoginMode && !c.setOfflineMode(false), "preparation locks login mode");
+            s.calls[0](input());
+            p.calls[0](core::JavaRuntime{*input().manualJava, 25, core::RuntimeArchitecture::X64});
+            require(game.calls.size() == 1 && !game.identity.authenticated && game.identity.playerName == "Local_Player"
+                && accounts.signIns == 0, "explicit offline selection launches without an authenticated account");
+            require(!c.setOfflineMode(false) && !c.setPlayerName("Changed"), "running game locks identity and name");
+            game.calls[0]({GameProcessEvent::Kind::Finished, {}});
+            store.writable = false;
+            require(!c.setOfflineMode(false) && c.homeSnapshot().offlineMode, "failed preference save cannot silently change mode");
+            require(!c.setPlayerName("Lost_Name") && c.homeSnapshot().account.displayName == "Local_Player", "failed name save keeps confirmed identity");
+            store.writable = true;
+            require(c.setOfflineMode(false) && !c.homeSnapshot().offlineMode && credentials.loads == 1
+                && !store.saved->offlineMode, "switching online restores saved credentials without opening browser");
+            c.requestPrimaryAction();
+            require(accounts.signIns == 1 && !c.setOfflineMode(true), "login in progress locks mode");
+            accounts.done(AuthFailure{AuthError::NoOwnership});
+            require(!c.homeSnapshot().offlineMode && game.calls.size() == 1, "ownership failure never automatically starts offline game");
+            c.requestSignIn();
+            accounts.done(AuthSuccess{{"Real_Player", QString(32, 'b'), "private-online-token", "client", "123", QDateTime::currentDateTimeUtc().addSecs(3600)}, "refresh"});
+            require(c.setOfflineMode(true) && c.homeSnapshot().account.displayName == "Local_Player"
+                && account.session(), "explicit offline selection preserves Microsoft session and separate name");
+            require(c.setOfflineMode(false) && c.homeSnapshot().account.displayName == "Real_Player"
+                && !c.setPlayerName("No_Edit"), "switching back restores real profile without editing it");
+            require(c.setOfflineMode(true) && c.homeSnapshot().account.displayName == "Local_Player", "repeated switches retain offline name");
+        }
     } catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
 }

@@ -108,6 +108,7 @@ struct LaunchSummary {
 
 struct HomeSnapshot {
     bool offlineMode = false;
+    bool canChangeLoginMode = false;
     bool sessionActive = false;
     QString statusTitle;
     QString primaryLabel;

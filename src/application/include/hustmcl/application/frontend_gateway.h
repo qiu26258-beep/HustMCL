@@ -24,6 +24,7 @@ public:
     virtual void requestSignIn() {}
     virtual void requestSignOut() {}
     virtual void requestCancelSignIn() {}
+    virtual bool setOfflineMode(bool) { return false; }
     // Offline identity changes are accepted only while no launch is active.
     virtual bool setPlayerName(const QString&) { return false; }
     // Memory limit for the next launch; accepted only while no launch is active and within kMin/kMaxMemoryMb.

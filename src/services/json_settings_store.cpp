@@ -28,6 +28,8 @@ std::optional<LauncherSettings> JsonSettingsStore::load()
         settings.playerName = name.toString();
     const auto memory = object.value(QLatin1String("memoryMb"));
     if (memory.isDouble() && validMemoryMb(memory.toInt(-1))) settings.memoryMb = memory.toInt();
+    const auto offline = object.value(QLatin1String("offlineMode"));
+    if (offline.isBool()) settings.offlineMode = offline.toBool();
     return settings;
 }
 
@@ -38,7 +40,8 @@ bool JsonSettingsStore::save(const LauncherSettings& settings)
     if (!file.open(QIODevice::WriteOnly)) return false;
     const QJsonObject object{{QStringLiteral("schemaVersion"), kSchemaVersion},
                              {QStringLiteral("playerName"), settings.playerName},
-                             {QStringLiteral("memoryMb"), settings.memoryMb}};
+                             {QStringLiteral("memoryMb"), settings.memoryMb},
+                             {QStringLiteral("offlineMode"), settings.offlineMode}};
     file.write(QJsonDocument(object).toJson(QJsonDocument::Indented));
     return file.commit();
 }

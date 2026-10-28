@@ -7,11 +7,13 @@
 #include "summary_row.h"
 
 #include <QFrame>
+#include <QComboBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QStyle>
+#include <QSignalBlocker>
 #include <QVBoxLayout>
 
 namespace hustmcl::ui {
@@ -27,6 +29,23 @@ SettingsPage::SettingsPage(QWidget* parent)
     auto* layout = new QVBoxLayout(content);
     layout->setContentsMargins(24, 24, 24, 24);
     layout->setSpacing(0);
+
+    auto* modeTitle = new QLabel(QStringLiteral("登录方式"), content);
+    modeTitle->setObjectName(QStringLiteral("SectionTitle"));
+    layout->addWidget(modeTitle);
+    layout->addSpacing(8);
+    m_loginMode = new QComboBox(content);
+    m_loginMode->setObjectName(QStringLiteral("LoginModeSelector"));
+    m_loginMode->setAccessibleName(QStringLiteral("登录方式"));
+    m_loginMode->addItem(QStringLiteral("微软账号（正版）"));
+    m_loginMode->addItem(QStringLiteral("离线玩家（本地）"));
+    layout->addWidget(m_loginMode);
+    m_modeError = new QLabel(content);
+    m_modeError->setObjectName(QStringLiteral("LoginModeError"));
+    m_modeError->setWordWrap(true);
+    m_modeError->hide();
+    layout->addWidget(m_modeError);
+    layout->addSpacing(16);
 
     m_offlineSection = new QWidget(content);
     m_offlineSection->setObjectName(QStringLiteral("OfflineIdentitySection"));
@@ -196,15 +215,33 @@ SettingsPage::SettingsPage(QWidget* parent)
     connect(m_cancelSignInButton, &QPushButton::clicked, this,
             &SettingsPage::cancelSignInRequested);
     connect(m_signOutButton, &QPushButton::clicked, this, &SettingsPage::signOutRequested);
+    connect(m_loginMode, &QComboBox::activated, this, [this](int index) {
+        emit offlineModeRequested(index == 1);
+        // The gateway may reject a change; always display its confirmed mode.
+        m_loginMode->setCurrentIndex(m_home.offlineMode ? 1 : 0);
+    });
 
     setSnapshot({});
 }
 
 void SettingsPage::setSnapshot(const application::HomeSnapshot& home)
 {
+    if (m_offlineMode != home.offlineMode) {
+        m_edited = false;
+        m_fieldError->hide();
+        m_savedNote->hide();
+        m_modeError->hide();
+        m_actionBar->setErrorState(false);
+    }
     m_home = home;
     m_sessionActive = home.sessionActive;
     m_offlineMode = home.offlineMode;
+    const QSignalBlocker modeSignals(m_loginMode);
+    m_loginMode->setCurrentIndex(m_offlineMode ? 1 : 0);
+    m_loginMode->setEnabled(home.canChangeLoginMode);
+    m_loginMode->setToolTip(home.canChangeLoginMode
+        ? QStringLiteral("选择本次游戏使用的身份；登录方式会保存到本机。")
+        : QStringLiteral("启动准备、游戏运行或登录进行中不能切换身份。"));
 
     if (m_offlineMode) {
         header()->setContent(QStringLiteral("设置"),
@@ -240,6 +277,12 @@ void SettingsPage::setSnapshot(const application::HomeSnapshot& home)
 
     applyAccountState();
     applyEnabledState();
+}
+
+void SettingsPage::setModeChangeResult(bool accepted)
+{
+    m_modeError->setText(accepted ? QString() : QStringLiteral("无法保存登录方式，请检查数据目录的写入权限后重试。"));
+    m_modeError->setVisible(!accepted);
 }
 
 void SettingsPage::setSaveResult(bool accepted, const QString& message)
@@ -295,7 +338,7 @@ void SettingsPage::applyEnabledState()
         const bool editable = !m_sessionActive;
         m_nameInput->setEnabled(editable);
         m_actionBar->setPrimary(QStringLiteral("保存离线名"), editable,
-                                editable ? QStringLiteral("保存后立即应用到本次启动器。")
+                                editable ? QStringLiteral("保存后立即应用，下次打开仍会使用。")
                                          : QStringLiteral("游戏运行中不能修改离线身份。"));
         m_actionBar->setPrimaryVisible(true);
         m_actionBar->setSecondary(QString(), false, false, {});
@@ -308,7 +351,7 @@ void SettingsPage::applyEnabledState()
             m_actionBar->setTitle(QStringLiteral("本地设置"));
             m_actionBar->setNote(QStringLiteral("保存只修改离线身份，不会开始游戏或下载文件。"));
             m_identityNote->setText(
-                QStringLiteral("离线名仅用于本地单机游戏，不是微软正版登录。"
+                QStringLiteral("离线玩家无需微软登录，可用于本地单机游戏；无法加入要求正版验证的服务器或 Realms。"
                                "改名会改变离线 UUID，也会影响已有世界中该玩家的身份与物品归属。"));
         }
         return;

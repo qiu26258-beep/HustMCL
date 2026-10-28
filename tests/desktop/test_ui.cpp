@@ -484,6 +484,15 @@ public:
     void requestSignIn() override { ++signInRequests; }
     void requestSignOut() override { ++signOutRequests; }
     void requestCancelSignIn() override { ++cancelSignInRequests; }
+    bool setOfflineMode(bool offline) override
+    {
+        ++modeRequests;
+        home.offlineMode = offline;
+        home.account = {offline ? application::AccountState::Offline : application::AccountState::SignedOut,
+                        offline ? QStringLiteral("Local_Player") : QString(), QString()};
+        publish();
+        return true;
+    }
     bool setPlayerName(const QString& name) override
     {
         ++nameRequests;
@@ -513,6 +522,7 @@ public:
     int signOutRequests = 0;
     int cancelSignInRequests = 0;
     int nameRequests = 0;
+    int modeRequests = 0;
 };
 
 application::HomeSnapshot realHomeSnapshot()
@@ -610,6 +620,7 @@ private slots:
     void onlineAccountActionsForwardOnlyToGateway();
     void onlineAccountControlsRejectDuringSession();
     void offlineSettingsStayEditable();
+    void settingsLoginModeSwitchesAndLocks();
     void onlinePagesAvoidOfflineWording();
     void onlineSettingsReadableAtBothSizes();
     void realOfflineControllerFailureShowsStableCode();
@@ -1354,7 +1365,7 @@ void TestUi::offlineSettingsStayEditable()
         QStringLiteral("FieldSuccess"));
     QVERIFY(success);
     QVERIFY(success->isVisible());
-    QVERIFY(success->text().contains(QStringLiteral("本次启动器打开期间生效")));
+    QVERIFY(success->text().contains(QStringLiteral("离线名已应用")));
     QVERIFY(!success->text().contains(QStringLiteral("重开")));
     QVERIFY(!success->text().contains(QStringLiteral("重新打开")));
 }
@@ -1403,6 +1414,47 @@ void TestUi::onlinePagesAvoidOfflineWording()
     QVERIFY(!logsText.contains(QStringLiteral("离线身份")));
     QVERIFY(!logsText.contains(QStringLiteral("本地离线")));
     QVERIFY(logsText.contains(QStringLiteral("账号：Steve")));
+}
+
+void TestUi::settingsLoginModeSwitchesAndLocks()
+{
+    UiGateway gateway;
+    gateway.home = onlineHomeSnapshot();
+    gateway.home.canChangeLoginMode = true;
+    hustmcl::app::MainWindow window(&gateway, hustmcl::app::MainWindow::Mode::Real);
+    window.show();
+    window.setCurrentPage(hustmcl::app::MainWindow::Page::Settings);
+    auto* page = window.settingsPage();
+    auto* mode = page->findChild<QComboBox*>(QStringLiteral("LoginModeSelector"));
+    auto* name = page->findChild<QLineEdit*>(QStringLiteral("PlayerNameInput"));
+    QVERIFY(mode && name);
+    QCOMPARE(mode->currentIndex(), 0);
+    QVERIFY(mode->isEnabled());
+    QVERIFY(QMetaObject::invokeMethod(mode, "activated", Q_ARG(int, 1)));
+    QCOMPARE(gateway.modeRequests, 1);
+    QCOMPARE(mode->currentIndex(), 1);
+    QVERIFY(name->isVisible() && name->isEnabled());
+    QCOMPARE(name->text(), QStringLiteral("Local_Player"));
+    QCOMPARE(gateway.primaryRequests, 0);
+    QCOMPARE(gateway.signInRequests, 0);
+    gateway.home.sessionActive = true;
+    gateway.home.canChangeLoginMode = false;
+    gateway.publish();
+    QVERIFY(!mode->isEnabled());
+    QVERIFY(QMetaObject::invokeMethod(mode, "activated", Q_ARG(int, 0)));
+    QCOMPARE(gateway.modeRequests, 1);
+    QCOMPARE(mode->currentIndex(), 1);
+    gateway.home.sessionActive = false;
+    gateway.home.canChangeLoginMode = true;
+    gateway.publish();
+    QVERIFY(QMetaObject::invokeMethod(mode, "activated", Q_ARG(int, 0)));
+    QCOMPARE(gateway.modeRequests, 2);
+    QVERIFY(!name->isVisible());
+    QCOMPARE(mode->currentIndex(), 0);
+    gateway.home.account.busy = true;
+    gateway.home.canChangeLoginMode = false;
+    gateway.publish();
+    QVERIFY(!mode->isEnabled());
 }
 
 void TestUi::onlineSettingsReadableAtBothSizes()
@@ -1525,7 +1577,7 @@ void TestUi::realSettingsDelegatesValidationToController()
     auto* success = window.settingsPage()->findChild<QLabel*>(QStringLiteral("FieldSuccess"));
     QVERIFY(success);
     QVERIFY(success->isVisible());
-    QVERIFY(success->text().contains(QStringLiteral("本次启动器打开期间生效")));
+    QVERIFY(success->text().contains(QStringLiteral("离线名已应用")));
 
     auto* error = window.settingsPage()->findChild<QLabel*>(QStringLiteral("FieldError"));
     QVERIFY(error);

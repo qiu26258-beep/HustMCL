@@ -6,6 +6,7 @@
 class QLabel;
 class QLineEdit;
 class QPushButton;
+class QComboBox;
 
 namespace hustmcl::ui {
 
@@ -25,6 +26,7 @@ public:
 
     void setSnapshot(const application::HomeSnapshot& home);
     void setSaveResult(bool accepted, const QString& message);
+    void setModeChangeResult(bool accepted);
     void focusNameField();
 
 signals:
@@ -32,6 +34,7 @@ signals:
     void signInRequested();
     void signOutRequested();
     void cancelSignInRequested();
+    void offlineModeRequested(bool offline);
 
 private:
     void applyEnabledState();
@@ -39,6 +42,8 @@ private:
     void clearFieldError();
 
     QWidget* m_offlineSection = nullptr;
+    QComboBox* m_loginMode = nullptr;
+    QLabel* m_modeError = nullptr;
     QWidget* m_accountSection = nullptr;
     QLineEdit* m_nameInput = nullptr;
     QLabel* m_identityNote = nullptr;
