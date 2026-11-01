@@ -9,6 +9,11 @@ supported; Forge/NeoForge/Quilt and other pack formats are not. Minecraft
 and matching Java are downloaded on demand, and the game is always started
 by the user.
 
+Choose the installation directory on the first installer page. The launcher
+and subsequent game, Java and cache downloads stay together there (game
+data is under `data/`). Uninstall keeps personal data; reinstalling into
+the original folder preserves it, while conflicting program files are protected.
+
 This release source snapshot excludes private character-derived artwork,
 Minecraft files, Java, local caches, logs, account data and user files.
 Original campus geometric decoration and icon are included. Third-party

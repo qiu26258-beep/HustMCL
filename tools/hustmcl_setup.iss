@@ -32,7 +32,8 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64os
 ArchitecturesInstallIn64BitMode=x64os
 MinVersion=10.0
-DisableDirPage=yes
+DisableDirPage=no
+DirExistsWarning=no
 DisableProgramGroupPage=yes
 DisableWelcomePage=yes
 DisableReadyPage=yes
@@ -137,6 +138,11 @@ begin
   Result := IsX64OS;
 end;
 
+procedure InitializeWizard();
+begin
+  WizardForm.SelectDirLabel.Caption := '请选择 HustMCL 的安装位置。启动器和之后下载的游戏、Java、缓存将一起保存在此目录。';
+end;
+
 function RegisteredInstallation(): Boolean;
 var
   RegisteredRoot: String;
@@ -149,12 +155,49 @@ begin
   Result := CompareText(RegisteredRoot, ExpandConstant('{app}')) = 0;
 end;
 
+function UnoccupiedFile(Path: String): Boolean;
+var
+  Parent: String;
+begin
+  Result := False;
+  if not SafePath(Path) or FileExists(Path) or DirExists(Path) then exit;
+  Path := ExtractFileDir(Path);
+  while Length(Path) > 3 do begin
+    if FileExists(Path) then exit;
+    Parent := ExtractFileDir(Path);
+    if Parent = Path then exit;
+    Path := Parent;
+  end;
+  Result := True;
+end;
+
+function NoPayloadConflicts(): Boolean;
+var
+  Lines: TArrayOfString;
+  I: Integer;
+  Path: String;
+begin
+  { An uninstalled app can leave game data behind after registration is gone.
+    Merge only if none of this installer's destination files already exists. }
+  Result := False;
+  if not UnoccupiedFile(ExpandConstant('{app}\.hustmcl-package')) or
+     not UnoccupiedFile(ExpandConstant('{app}\unins000.exe')) or
+     not UnoccupiedFile(ExpandConstant('{app}\unins000.dat')) then exit;
+  ExtractTemporaryFile('payload.sha256');
+  if not LoadStringsFromFile(ExpandConstant('{tmp}\payload.sha256'), Lines) then exit;
+  for I := 0 to GetArrayLength(Lines) - 1 do begin
+    Path := ExpandConstant('{app}\') + Copy(Lines[I], 66, Length(Lines[I]));
+    if not UnoccupiedFile(Path) then exit;
+  end;
+  Result := GetArrayLength(Lines) > 0;
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   Result := '';
   ReusePayload := False;
   if not SafePath(ExpandConstant('{app}')) or FileExists(ExpandConstant('{app}')) then begin
-    Result := 'Installation directory already exists. Open the installed HustMCL shortcut.';
+    Result := '所选安装路径不可用，请返回并选择一个普通文件夹。';
     exit;
   end;
   if DirExists(ExpandConstant('{app}')) then begin
@@ -169,9 +212,11 @@ begin
       { Upgrade or repair: replace payload files, keep instances, saves and
         anything else this installer did not write. }
       Log('Upgrading this registered installation; payload will be replaced, personal files kept.')
+    else if NoPayloadConflicts() then
+      Log('Existing directory has no payload conflicts; installing while preserving personal files.')
     else begin
-      Result := 'Installation directory already exists but was not created by HustMCL. Move or rename it, then run this installer again.';
-      Log('Existing directory is not a registered HustMCL installation; refusing changes.');
+      Result := '所选目录中已有同名程序文件或文件夹，无法安全覆盖。请返回并选择另一个安装文件夹；已有游戏和存档无需删除。';
+      Log('Existing unregistered directory has payload conflicts; refusing changes.');
       exit;
     end;
   end;

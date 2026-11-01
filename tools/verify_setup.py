@@ -32,7 +32,10 @@ def main():
     subprocess.run([str(compiler_bin / "g++.exe"), "-static", "-mwindows",
                     str(cpp), "-o", str(source / "hustmcl_desktop.exe")], check=True)
     (source / "component.dll").write_bytes(b"test component")
-    records = [{"path": p.name, "size": p.stat().st_size, "sha256": digest(p)} for p in source.iterdir()]
+    (source / "plugins").mkdir()
+    (source / "plugins/test.dll").write_bytes(b"nested component")
+    records = [{"path": p.relative_to(source).as_posix(), "size": p.stat().st_size, "sha256": digest(p)}
+               for p in source.rglob("*") if p.is_file()]
     inputs = root / "build"
     manifest = write_inputs(source, inputs, records)
     install_id = "HustMCL.InstallerTest." + uuid.uuid4().hex
@@ -46,7 +49,7 @@ def main():
                         f"/DShortcutName={shortcut_name}"]
     subprocess.run(command, check=True)
     installer = inputs / "HustMCL-Setup-Windows-x64.exe"
-    destination = root / "installed"
+    destination = root / "自选路径 with spaces" / "HustMCL"
     common = ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"]
 
     def run(name, target=destination, expected=0, silent=True):
@@ -57,8 +60,23 @@ def main():
     unknown = root / "unknown"
     unknown.mkdir()
     (unknown / "keep.txt").write_text("unrelated")
+    (unknown / "hustmcl_desktop.exe").write_bytes(b"foreign launcher")
     run("unknown", unknown, expected=7)
     assert (unknown / "keep.txt").read_text() == "unrelated"
+    assert (unknown / "hustmcl_desktop.exe").read_bytes() == b"foreign launcher"
+    assert not (unknown / "component.dll").exists(), "Conflict wrote partial payload"
+    directory_conflict = root / "directory-conflict"
+    (directory_conflict / "component.dll").mkdir(parents=True)
+    (directory_conflict / "component.dll" / "keep.txt").write_text("keep directory")
+    run("directory-conflict", directory_conflict, expected=7)
+    assert (directory_conflict / "component.dll" / "keep.txt").read_text() == "keep directory"
+    assert not (directory_conflict / "hustmcl_desktop.exe").exists()
+    parent_conflict = root / "parent-conflict"
+    parent_conflict.mkdir()
+    (parent_conflict / "plugins").write_text("personal file occupying a directory name")
+    run("parent-conflict", parent_conflict, expected=7)
+    assert (parent_conflict / "plugins").read_text() == "personal file occupying a directory name"
+    assert not (parent_conflict / "hustmcl_desktop.exe").exists()
     run("first")
     original = (destination / "hustmcl_desktop.exe").stat().st_mtime_ns
     world = destination / "data/game/saves/retained-world/level.dat"
@@ -120,10 +138,34 @@ def main():
     assert not (destination / "hustmcl_desktop.exe").exists()
     assert not shortcut.exists()
     assert world.exists() and digest(world) == before, "Uninstall changed personal data"
+    # Uninstall clears registration and removes the package marker. Reinstall
+    # into the same directory must preserve data and unrelated generated files.
+    for _ in range(200):
+        if not uninstaller.exists() and not (destination / "unins000.dat").exists() and not marker.exists():
+            break
+        time.sleep(.05)
+    assert not marker.exists(), "Fixture still has an installed package marker"
+    assert not uninstaller.exists(), "Temporary uninstaller has not removed its original executable"
+    assert not (destination / "unins000.dat").exists(), "Uninstall has not completed"
+    run("reinstall-after-uninstall")
+    assert digest(marker) == digest(manifest)
+    assert (destination / "hustmcl_desktop.exe").is_file() and shortcut.is_file()
+    assert world.exists() and digest(world) == before, "Reinstall changed personal data"
+    assert (destination / "launcher-opened.txt").exists(), "Reinstall removed an unrelated file"
+    result = subprocess.run([str(uninstaller), *common, f"/LOG={root / 'uninstall-again.log'}"])
+    assert result.returncode == 0
+    for _ in range(200):
+        if not uninstaller.exists() and not (destination / "unins000.dat").exists() and not marker.exists():
+            break
+        time.sleep(.05)
+    run("reinstall-again")
+    assert world.exists() and digest(world) == before, "Repeated reinstall changed personal data"
     report = {"status": "passed", "scenarios": ["unknown-directory", "first-install", "repeat-no-payload-writes",
         "shortcut-recovery", "registered-legacy-adoption", "different-package-upgrade",
         "silent-no-launch", "damaged-install-repaired",
-        "foreign-shortcut-preserved", "uninstall-preserves-personal-data"], "installId": install_id,
+        "foreign-shortcut-preserved", "uninstall-preserves-personal-data", "directory-collision-preserved",
+        "custom-unicode-path", "reinstall-after-uninstall", "repeated-reinstall-preserves-data",
+        "parent-file-collision-preserved"], "installId": install_id,
         "interactiveTested": not args.skip_interactive, "marketChannel": args.market_channel}
     if not args.skip_interactive:
         report["scenarios"].append("interactive-opens-launcher")
