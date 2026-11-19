@@ -1023,16 +1023,41 @@ void TestUi::noDecorationHidesArtwork()
     auto* sidebarArtwork = window.sidebar()->findChild<QWidget*>(QStringLiteral("CampusArtwork"));
     QVERIFY(sidebarArtwork);
     QVERIFY(sidebarArtwork->isHidden());
+#ifdef HUSTMCL_PUBLIC_RELEASE
+    QVERIFY(!window.sidebar()->findChild<QLabel*>(QStringLiteral("SidebarCaption")));
+#else
     auto* sidebarCaption = window.sidebar()->findChild<QLabel*>(QStringLiteral("SidebarCaption"));
     QVERIFY(sidebarCaption);
     QVERIFY(sidebarCaption->isHidden());
+#endif
 
     auto* homeArtwork = window.homePage()->findChild<QWidget*>(QStringLiteral("CampusArtwork"));
     QVERIFY(homeArtwork);
     QVERIFY(homeArtwork->isHidden());
+#ifdef HUSTMCL_PUBLIC_RELEASE
+    QVERIFY(!window.homePage()->findChild<QLabel*>(QStringLiteral("SidebarCaption")));
+    QVERIFY(!window.homePage()->findChild<QWidget*>(QStringLiteral("VDivider")));
+    auto* artworkColumn = window.homePage()->findChild<QWidget*>(
+        QStringLiteral("ArtworkColumn"));
+    QVERIFY(artworkColumn);
+
+    // Switching across the responsive breakpoint must not reintroduce a
+    // decorative gap or an empty right column when --no-decoration is active.
+    window.setCurrentPage(hustmcl::app::MainWindow::Page::Home);
+    QCoreApplication::processEvents();
+    QVERIFY(homeArtwork->isHidden());
+    QVERIFY(artworkColumn->isHidden());
+    for (const QSize size : {QSize(1120, 720), QSize(840, 460), QSize(1120, 720)}) {
+        window.resize(size);
+        QCoreApplication::processEvents();
+        QVERIFY(homeArtwork->isHidden());
+        QVERIFY(artworkColumn->isHidden());
+    }
+#else
     auto* homeCaption = window.homePage()->findChild<QLabel*>(QStringLiteral("SidebarCaption"));
     QVERIFY(homeCaption);
     QVERIFY(homeCaption->isHidden());
+#endif
 }
 
 void TestUi::settingsAndLogsAreDisabled()
@@ -2834,19 +2859,36 @@ void TestUi::releaseArtworkMatchesBuildMode()
 #endif
 
     hustmcl::ui::HomePage home;
+    auto* homeArtwork = home.findChild<QWidget*>(QStringLiteral("CampusArtwork"));
+    QVERIFY(homeArtwork);
+    hustmcl::ui::Sidebar sidebar;
+    auto* sidebarArtwork = sidebar.findChild<QWidget*>(QStringLiteral("CampusArtwork"));
+    QVERIFY(sidebarArtwork);
+#ifdef HUSTMCL_PUBLIC_RELEASE
+    QVERIFY(homeArtwork->accessibleName().contains(QStringLiteral("华中科技大学校训")));
+    QVERIFY(homeArtwork->accessibleName().contains(QStringLiteral("明德、厚学、求是、创新")));
+    QVERIFY(homeArtwork->accessibleName().contains(QStringLiteral("明德")));
+    QVERIFY(homeArtwork->accessibleName().contains(QStringLiteral("厚学")));
+    QVERIFY(homeArtwork->accessibleName().contains(QStringLiteral("求是")));
+    QVERIFY(homeArtwork->accessibleName().contains(QStringLiteral("创新")));
+    QVERIFY(sidebarArtwork->accessibleName().contains(QStringLiteral("华中科技大学校训")));
+    QVERIFY(!home.findChild<QLabel*>(QStringLiteral("SidebarCaption")));
+    QVERIFY(!home.findChild<QLabel*>(QStringLiteral("SidebarSub")));
+    QVERIFY(!sidebar.findChild<QLabel*>(QStringLiteral("SidebarCaption")));
+    QVERIFY(!sidebar.findChild<QLabel*>(QStringLiteral("SidebarSub")));
+    const QString homeText = joinedLabelText(home);
+    QVERIFY(!homeText.contains(QStringLiteral("小科")));
+    QVERIFY(!homeText.contains(QStringLiteral("树影")));
+    QVERIFY(!joinedLabelText(sidebar).contains(QStringLiteral("小科")));
+#else
     auto* homeCaption = home.findChild<QLabel*>(QStringLiteral("SidebarCaption"));
     QVERIFY(homeCaption);
-    hustmcl::ui::Sidebar sidebar;
     auto* sidebarCaption = sidebar.findChild<QLabel*>(QStringLiteral("SidebarCaption"));
     QVERIFY(sidebarCaption);
-#ifdef HUSTMCL_PUBLIC_RELEASE
-    QVERIFY(!homeCaption->text().contains(QStringLiteral("小科")));
-    QVERIFY(!sidebarCaption->text().contains(QStringLiteral("小科")));
-    QVERIFY(homeCaption->text().contains(QStringLiteral("校园")));
-    QVERIFY(sidebarCaption->text().contains(QStringLiteral("校园")));
-#else
     QVERIFY(homeCaption->text().contains(QStringLiteral("小科")));
     QVERIFY(sidebarCaption->text().contains(QStringLiteral("小科")));
+    QVERIFY(homeArtwork->accessibleName().contains(QStringLiteral("小科")));
+    QVERIFY(sidebarArtwork->accessibleName().contains(QStringLiteral("小科")));
 #endif
 
     home.resize(1120, 720);
@@ -2858,6 +2900,52 @@ void TestUi::releaseArtworkMatchesBuildMode()
     QPixmap cached;
 #ifdef HUSTMCL_PUBLIC_RELEASE
     QVERIFY(!QPixmapCache::find(QStringLiteral("hustmcl/campus/xiaoke-campus"), &cached));
+
+    // The motto card must stay in the first viewport at the default size and
+    // collapse to the compact strip without dropping decoration.
+    hustmcl::app::DemoController controller;
+    hustmcl::app::MainWindow window(&controller, hustmcl::app::MainWindow::Mode::Demo);
+    window.setCurrentPage(hustmcl::app::MainWindow::Page::Home);
+    window.show();
+    window.resize(1120, 720);
+    QCoreApplication::processEvents();
+    auto* windowArtwork = window.homePage()->findChild<QWidget*>(QStringLiteral("CampusArtwork"));
+    QVERIFY(windowArtwork);
+    QVERIFY(windowArtwork->isVisible());
+    QCOMPARE(windowArtwork->size(), QSize(226, 208));
+    QCOMPARE(windowArtwork->contentsMargins().bottom(), 0);
+    auto* subtitle = window.homePage()->findChild<QLabel*>(QStringLiteral("PageSubtitle"));
+    QVERIFY(subtitle);
+    QVERIFY(subtitle->text().isEmpty());
+    QVERIFY(!subtitle->isVisible());
+    auto* pageTitle = window.homePage()->findChild<QLabel*>(QStringLiteral("PageTitle"));
+    QVERIFY(pageTitle);
+    QVERIFY(pageTitle->parentWidget());
+    QVERIFY(qAbs(pageTitle->geometry().center().y()
+                 - pageTitle->parentWidget()->rect().center().y())
+            <= 2);
+    QVERIFY(!window.homePage()->findChild<QWidget*>(QStringLiteral("VDivider")));
+    auto* scroll = window.homePage()->scrollArea();
+    QVERIFY(scroll);
+    QVERIFY(scroll->viewport()->rect().intersects(
+        QRect(windowArtwork->mapTo(scroll->viewport(), QPoint(0, 0)),
+              windowArtwork->size())));
+
+    window.resize(840, 460);
+    QCoreApplication::processEvents();
+    QVERIFY(windowArtwork->isVisible());
+    QCOMPARE(windowArtwork->height(), 62);
+    QCOMPARE(windowArtwork->contentsRect().height(), 54);
+    QCOMPARE(windowArtwork->contentsMargins().bottom(), 8);
+    QVERIFY(scroll->viewport()->rect().intersects(
+        QRect(windowArtwork->mapTo(scroll->viewport(), QPoint(0, 0)),
+              windowArtwork->size())));
+
+    window.resize(1120, 720);
+    QCoreApplication::processEvents();
+    QVERIFY(windowArtwork->isVisible());
+    QCOMPARE(windowArtwork->size(), QSize(226, 208));
+    QCOMPARE(windowArtwork->contentsMargins().bottom(), 0);
 #endif
 }
 

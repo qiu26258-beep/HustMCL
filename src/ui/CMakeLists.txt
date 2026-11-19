@@ -1,11 +1,13 @@
 option(HUSTMCL_PUBLIC_RELEASE
-    "Build the public frontend without character-derived artwork" OFF)
+    "Build the public frontend without character-derived artwork" ON)
 
 add_library(hustmcl_ui STATIC
     campus_artwork.cpp
     campus_artwork.h
     checks_page.cpp
     checks_page.h
+    combo_box.cpp
+    combo_box.h
     content_market_page.cpp
     content_market_page.h
     copy.cpp

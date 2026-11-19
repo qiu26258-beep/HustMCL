@@ -90,7 +90,10 @@ private:
     QBoxLayout* m_columns = nullptr;
     QWidget* m_left = nullptr;
     QWidget* m_right = nullptr;
+    QBoxLayout* m_leftLayout = nullptr;
+    QBoxLayout* m_rightLayout = nullptr;
     QFrame* m_divider = nullptr;
+    bool m_decorationsVisible = true;
     QLabel* m_instanceName = nullptr;
     QLabel* m_instanceMeta = nullptr;
     StatusRow* m_accountRow = nullptr;

@@ -6,8 +6,6 @@ class QLabel;
 
 namespace hustmcl::ui {
 
-class LeafMotif;
-
 class PageHeader : public QWidget {
 public:
     explicit PageHeader(QWidget* parent = nullptr);
@@ -20,7 +18,6 @@ private:
     QLabel* m_title = nullptr;
     QLabel* m_subtitle = nullptr;
     QLabel* m_trailing = nullptr;
-    LeafMotif* m_leaf = nullptr;
 };
 
 } // namespace hustmcl::ui

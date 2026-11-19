@@ -1,10 +1,15 @@
 #include "campus_artwork.h"
 
+#include "theme.h"
+
+#include <QFontDatabase>
 #include <QLinearGradient>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPixmapCache>
-#include <QStyleOption>
+#include <QStringList>
+#include <QTransform>
+#include <QVector>
 
 namespace hustmcl::ui {
 
@@ -15,92 +20,124 @@ const QString kCacheKey = QStringLiteral("hustmcl/campus/xiaoke-campus");
 #else
 namespace {
 
-void paintPublicCampus(QPainter& painter, const QRectF& target)
+QString mottoFontFamily()
 {
-    const qreal width = target.width();
-    const qreal height = target.height();
-    const auto x = [&](qreal value) { return target.left() + width * value; };
-    const auto y = [&](qreal value) { return target.top() + height * value; };
-
-    QLinearGradient sky(target.topLeft(), target.bottomLeft());
-    sky.setColorAt(0.0, QColor(QStringLiteral("#F8F1E6")));
-    sky.setColorAt(0.62, QColor(QStringLiteral("#EAF0E4")));
-    sky.setColorAt(1.0, QColor(QStringLiteral("#DDE7D8")));
-    painter.fillRect(target, sky);
-
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(QColor(QStringLiteral("#E8DAC5")));
-    painter.drawRoundedRect(QRectF(x(0.43), y(0.30), width * 0.48, height * 0.38), 3.0, 3.0);
-    painter.setBrush(QColor(QStringLiteral("#BDA88F")));
-    painter.drawRect(QRectF(x(0.40), y(0.27), width * 0.54, height * 0.045));
-
-    painter.setBrush(QColor(QStringLiteral("#FBF5EA")));
-    painter.setPen(QPen(QColor(QStringLiteral("#D5C4AD")), qMax(1.0, width * 0.004)));
-    const qreal windowWidth = width * 0.10;
-    const qreal windowHeight = height * 0.065;
-    for (int row = 0; row < 2; ++row) {
-        for (int column = 0; column < 3; ++column) {
-            painter.drawRoundedRect(
-                QRectF(x(0.49) + column * width * 0.14, y(0.36) + row * height * 0.12,
-                       windowWidth, windowHeight),
-                1.5, 1.5);
+    // KaiTi is the preferred school-motto face on Windows; the rest keep the
+    // four-character lines legible when a trimmed Windows image lacks it.
+    static const QString family = []() {
+        const QStringList candidates = {
+            QStringLiteral("KaiTi"),
+            QStringLiteral("STKaiti"),
+            QStringLiteral("FangSong"),
+            QStringLiteral("SimSun"),
+            QStringLiteral("Microsoft YaHei UI"),
+        };
+        const QStringList installed = QFontDatabase::families();
+        for (const QString& candidate : candidates) {
+            if (installed.contains(candidate, Qt::CaseInsensitive)) {
+                return candidate;
+            }
         }
+        return QStringLiteral("Microsoft YaHei UI");
+    }();
+    return family;
+}
+
+QColor token(const char* value)
+{
+    return QColor(QString::fromLatin1(value));
+}
+
+QPainterPath centeredLinePath(const QString& text, const QFont& font)
+{
+    QPainterPath path;
+    path.addText(QPointF(0.0, 0.0), font, text);
+    const QRectF bounds = path.boundingRect();
+    path.translate(-bounds.center().x(), -bounds.center().y());
+    return path;
+}
+
+void paintPublicMotto(QPainter& painter, const QRectF& target, CampusArtwork::MottoTone tone)
+{
+    const bool forest = tone == CampusArtwork::MottoTone::Forest;
+    const QColor background = token(forest ? theme::kMottoForest : theme::kMottoPaper);
+    const QColor ink = token(forest ? theme::kMottoCream : theme::kMottoInk);
+    const QColor hairline = token(forest ? theme::kMottoForestLine : theme::kMottoPaperLine);
+    const QColor muted = token(forest ? theme::kMottoForestMuted : theme::kMottoPaperMuted);
+
+    painter.fillRect(target, background);
+
+    const bool compact = target.height() < 90.0;
+    QFont font(mottoFontFamily());
+    font.setPixelSize(1000);
+
+    QVector<QPainterPath> lines;
+    if (compact) {
+        lines.append(centeredLinePath(QStringLiteral("明德 厚学 求是 创新"), font));
+    } else {
+        lines.append(centeredLinePath(QStringLiteral("明德 厚学"), font));
+        lines.append(centeredLinePath(QStringLiteral("求是 创新"), font));
     }
 
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(QColor(QStringLiteral("#8C1D2F")));
-    const QRectF gate(x(0.16), y(0.45), width * 0.28, height * 0.42);
-    painter.drawEllipse(QRectF(gate.left(), gate.top(), gate.width(), gate.width()));
-    painter.drawRect(QRectF(gate.left(), gate.top() + gate.width() * 0.5,
-                            gate.width(), gate.height() - gate.width() * 0.5));
+    qreal widest = 0.0;
+    qreal lineHeight = 0.0;
+    for (const QPainterPath& line : lines) {
+        const QRectF bounds = line.boundingRect();
+        widest = qMax(widest, bounds.width());
+        lineHeight = qMax(lineHeight, bounds.height());
+    }
 
-    const QRectF opening(x(0.20), y(0.52), width * 0.20, height * 0.35);
-    painter.setBrush(QColor(QStringLiteral("#F7EFDF")));
-    painter.drawEllipse(QRectF(opening.left(), opening.top(), opening.width(), opening.width()));
-    painter.drawRect(QRectF(opening.left(), opening.top() + opening.width() * 0.5,
-                            opening.width(), opening.height() - opening.width() * 0.5));
+    QPainterPath group;
+    if (lines.size() == 1) {
+        group = lines.first();
+    } else {
+        const qreal gap = lineHeight * 0.34;
+        QPainterPath first = lines.at(0);
+        first.translate(0.0, -(lineHeight + gap) / 2.0);
+        QPainterPath second = lines.at(1);
+        second.translate(0.0, (lineHeight + gap) / 2.0);
+        group = first.united(second);
+    }
 
-    painter.setBrush(QColor(QStringLiteral("#B8957E")));
-    painter.drawRect(QRectF(x(0.14), y(0.86), width * 0.32, height * 0.025));
-    painter.setBrush(QColor(QStringLiteral("#D9CBB8")));
-    painter.drawRoundedRect(QRectF(x(0.10), y(0.89), width * 0.40, height * 0.025), 2.0, 2.0);
-    painter.setBrush(QColor(QStringLiteral("#CDBCA6")));
-    painter.drawRoundedRect(QRectF(x(0.06), y(0.92), width * 0.48, height * 0.025), 2.0, 2.0);
+    const QRectF groupBounds = group.boundingRect();
+    const qreal availableWidth = target.width() * 0.86;
+    const qreal availableHeight = target.height() * (compact ? 0.72 : 0.60);
+    const qreal scale = qMin(availableWidth / qMax<qreal>(1.0, widest),
+                             availableHeight / qMax<qreal>(1.0, groupBounds.height()));
+    const qreal centerY = compact
+        ? target.center().y()
+        : target.center().y() - target.height() * 0.035;
 
-    painter.setPen(QPen(QColor(QStringLiteral("#6B5542")), qMax(2.0, width * 0.03),
-                        Qt::SolidLine, Qt::RoundCap));
-    painter.drawLine(QPointF(x(0.66), y(0.88)), QPointF(x(0.66), y(0.35)));
-    painter.drawLine(QPointF(x(0.66), y(0.52)), QPointF(x(0.57), y(0.42)));
-    painter.drawLine(QPointF(x(0.66), y(0.46)), QPointF(x(0.76), y(0.37)));
-
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(QColor(91, 122, 88, 220));
-    painter.drawEllipse(QPointF(x(0.34), y(0.20)), width * 0.22, height * 0.13);
-    painter.drawEllipse(QPointF(x(0.57), y(0.15)), width * 0.19, height * 0.12);
-    painter.drawEllipse(QPointF(x(0.79), y(0.20)), width * 0.18, height * 0.11);
-    painter.setBrush(QColor(127, 155, 120, 190));
-    painter.drawEllipse(QPointF(x(0.25), y(0.13)), width * 0.12, height * 0.08);
-    painter.drawEllipse(QPointF(x(0.67), y(0.11)), width * 0.10, height * 0.07);
-    painter.drawEllipse(QPointF(x(0.90), y(0.13)), width * 0.08, height * 0.06);
-
-    painter.setBrush(QColor(169, 191, 160, 210));
+    QTransform transform;
+    transform.translate(target.center().x(), centerY);
+    transform.scale(scale, scale);
+    transform.translate(-groupBounds.center().x(), -groupBounds.center().y());
     painter.save();
-    painter.translate(x(0.12), y(0.33));
-    painter.rotate(-28.0);
-    painter.drawEllipse(QRectF(-width * 0.055, -height * 0.018,
-                               width * 0.11, height * 0.036));
-    painter.restore();
-    painter.save();
-    painter.translate(x(0.87), y(0.35));
-    painter.rotate(24.0);
-    painter.drawEllipse(QRectF(-width * 0.05, -height * 0.016,
-                               width * 0.10, height * 0.032));
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(ink);
+    painter.drawPath(transform.map(group));
     painter.restore();
 
-    painter.setPen(QPen(QColor(QStringLiteral("#D2C2AC")), qMax(1.0, width * 0.006)));
-    painter.drawLine(QPointF(target.left(), y(0.88)), QPointF(target.right(), y(0.88)));
+    if (compact) {
+        return;
+    }
+
+    const qreal ruleY = target.bottom() - target.height() * 0.105;
+    const qreal inset = target.width() * 0.17;
+    painter.setPen(QPen(hairline, 1.0));
+    painter.drawLine(QPointF(target.left() + inset, ruleY),
+                     QPointF(target.right() - inset, ruleY));
+
+    QFont attribution(QStringLiteral("Microsoft YaHei UI"));
+    attribution.setPixelSize(qBound(9, qRound(target.height() * 0.048), 11));
+    painter.setFont(attribution);
+    painter.setPen(muted);
+    const QRectF attributionRect(target.left() + 2.0, ruleY + 2.0,
+                                 target.width() - 4.0, target.bottom() - ruleY - 4.0);
+    painter.drawText(attributionRect, Qt::AlignHCenter | Qt::AlignTop,
+                     QStringLiteral("华中科技大学校训"));
 }
-}
+} // namespace
 #endif
 
 CampusArtwork::CampusArtwork(QWidget* parent)
@@ -109,7 +146,13 @@ CampusArtwork::CampusArtwork(QWidget* parent)
     setAttribute(Qt::WA_TransparentForMouseEvents);
     setFocusPolicy(Qt::NoFocus);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    setMinimumHeight(120);
+    setMinimumHeight(54);
+#ifdef HUSTMCL_PUBLIC_RELEASE
+    setAccessibleName(QStringLiteral("华中科技大学校训：明德、厚学、求是、创新"));
+    setAccessibleDescription(QStringLiteral("明德 厚学，求是 创新"));
+#else
+    setAccessibleName(QStringLiteral("华小科校园插画"));
+#endif
 }
 
 void CampusArtwork::setDecorationVisible(bool visible)
@@ -144,9 +187,22 @@ void CampusArtwork::setCropFocus(qreal focus)
     update();
 }
 
+void CampusArtwork::setMottoTone(MottoTone tone)
+{
+    if (m_mottoTone == tone) {
+        return;
+    }
+    m_mottoTone = tone;
+    update();
+}
+
 QSize CampusArtwork::sizeHint() const
 {
+#ifdef HUSTMCL_PUBLIC_RELEASE
+    return QSize(226, 208);
+#else
     return QSize(226, 280);
+#endif
 }
 
 #ifndef HUSTMCL_PUBLIC_RELEASE
@@ -170,7 +226,7 @@ void CampusArtwork::paintEvent(QPaintEvent*)
     painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
 
-    const QRectF target = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
+    const QRectF target = QRectF(contentsRect()).adjusted(0.5, 0.5, -0.5, -0.5);
     QPainterPath clip;
     clip.addRoundedRect(target, m_cornerRadius, m_cornerRadius);
     painter.setClipPath(clip);
@@ -184,7 +240,14 @@ void CampusArtwork::paintEvent(QPaintEvent*)
     }
 
 #ifdef HUSTMCL_PUBLIC_RELEASE
-    paintPublicCampus(painter, target);
+    paintPublicMotto(painter, target, m_mottoTone);
+    painter.setClipping(false);
+    painter.setPen(QPen(token(m_mottoTone == MottoTone::Forest
+                                  ? theme::kMottoForestLine
+                                  : theme::kMottoPaperLine),
+                        1.0));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawRoundedRect(target, m_cornerRadius, m_cornerRadius);
 #else
     const QPixmap source = sourcePixmap();
     if (source.isNull()) {
@@ -205,7 +268,6 @@ void CampusArtwork::paintEvent(QPaintEvent*)
         }
         painter.drawPixmap(target, source, sourceRect);
     }
-#endif
 
     QLinearGradient fade(0.0, target.top() + target.height() * 0.72, 0.0, target.bottom());
     fade.setColorAt(0.0, QColor(m_overlayColor.red(), m_overlayColor.green(), m_overlayColor.blue(), 0));
@@ -215,6 +277,7 @@ void CampusArtwork::paintEvent(QPaintEvent*)
     painter.setClipping(false);
     painter.setPen(QColor(QStringLiteral("#DED5C6")));
     painter.drawRoundedRect(target, m_cornerRadius, m_cornerRadius);
+#endif
 }
 
 } // namespace hustmcl::ui

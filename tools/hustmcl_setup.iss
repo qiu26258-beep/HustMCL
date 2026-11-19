@@ -16,6 +16,9 @@
 #ifndef ShortcutName
   #define ShortcutName "HustMCL Trial"
 #endif
+#ifndef ReleaseVersion
+  #define ReleaseVersion "0.1.0"
+#endif
 #ifndef ShortcutRoot
   #define DesktopRoot "{userdesktop}"
   #define ProgramsRoot "{userprograms}"
@@ -26,7 +29,7 @@
 [Setup]
 AppId={#InstallId}
 AppName={#AppDisplayName}
-AppVersion=0.1.0
+AppVersion={#ReleaseVersion}
 DefaultDirName={localappdata}\Programs\{#InstallDirName}
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64os

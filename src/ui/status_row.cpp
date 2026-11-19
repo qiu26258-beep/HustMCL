@@ -31,7 +31,7 @@ StatusRow::StatusRow(QWidget* parent)
     layout->addWidget(m_name, 0, Qt::AlignVCenter);
     layout->addWidget(m_value, 1, Qt::AlignVCenter);
     layout->addWidget(m_state, 0, Qt::AlignVCenter);
-    setMinimumHeight(46);
+    setMinimumHeight(38);
 }
 
 void StatusRow::setData(const QString& name, const QString& value, const QString& state, bool ok)

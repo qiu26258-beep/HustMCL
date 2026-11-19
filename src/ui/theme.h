@@ -61,6 +61,16 @@ inline constexpr const char* kGold = "#F2C86B";
 inline constexpr const char* kGoldSoft = "#F8EBC4";
 inline constexpr const char* kGoldText = "#6B4A00";
 
+// HUST motto panel: warm paper / deep forest pair with restrained hairlines.
+inline constexpr const char* kMottoPaper = "#F4EDDF";
+inline constexpr const char* kMottoInk = "#153D2F";
+inline constexpr const char* kMottoPaperLine = "#D8CFBD";
+inline constexpr const char* kMottoPaperMuted = "#6C7A6C";
+inline constexpr const char* kMottoForest = "#0B3328";
+inline constexpr const char* kMottoCream = "#F6EFDF";
+inline constexpr const char* kMottoForestLine = "#33604E";
+inline constexpr const char* kMottoForestMuted = "#B6CBBE";
+
 // Forest rail
 inline constexpr const char* kRail = "#0F3F32";
 inline constexpr const char* kRailHover = "#17493B";

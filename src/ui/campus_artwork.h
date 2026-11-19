@@ -8,6 +8,11 @@ namespace hustmcl::ui {
 
 class CampusArtwork : public QWidget {
 public:
+    enum class MottoTone {
+        Paper,
+        Forest,
+    };
+
     explicit CampusArtwork(QWidget* parent = nullptr);
 
     void setDecorationVisible(bool visible);
@@ -16,6 +21,7 @@ public:
     void setCornerRadius(qreal radius);
     void setOverlayColor(const QColor& color);
     void setCropFocus(qreal focus);
+    void setMottoTone(MottoTone tone);
 
     QSize sizeHint() const override;
 
@@ -29,6 +35,7 @@ private:
     qreal m_cornerRadius = 10.0;
     QColor m_overlayColor = QColor(QStringLiteral("#FFFCF6"));
     qreal m_cropFocus = 0.82;
+    MottoTone m_mottoTone = MottoTone::Paper;
 };
 
 } // namespace hustmcl::ui

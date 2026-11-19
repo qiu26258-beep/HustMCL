@@ -19,7 +19,7 @@ SummaryRow::SummaryRow(QWidget* parent)
     m_value->setTextInteractionFlags(Qt::NoTextInteraction);
     layout->addWidget(m_label, 1);
     layout->addWidget(m_value, 0);
-    setMinimumHeight(30);
+    setMinimumHeight(28);
 }
 
 void SummaryRow::setData(const QString& label, const QString& value)

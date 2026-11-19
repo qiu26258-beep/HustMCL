@@ -1,4 +1,4 @@
-HustMCL Preview — Windows 10 / 11 x64
+HustMCL 开源预览版 · Windows 10 / 11 x64
 
 此安装包仅提供启动器及 Qt 运行依赖，不包含 Minecraft 游戏文件或 Java。
 安装开始时可选择目录；启动器和之后下载的游戏、Java、缓存一起保存在所选目录（游戏数据位于 data 子目录）。
@@ -10,6 +10,8 @@ HustMCL Preview — Windows 10 / 11 x64
 游戏与匹配的 Java 将按需下载；安装完成后手动点击启动。
 Forge / NeoForge / Quilt、CurseForge 清单及其他旧格式暂未支持。
 请确保你有权使用 Minecraft 和所导入的内容。HustMCL 不是官方 Minecraft 产品。
+HustMCL 原创代码和文档采用安装目录内 LICENSE 所列的 MIT 许可证。
+第三方许可见 THIRD-PARTY-NOTICES。Qt 对应源码随分享包一同提供。
 
 仓库：https://github.com/qiu26258-beep/HustMCL
 问题反馈请附错误阶段，勿提交账号令牌、个人存档或私人日志。

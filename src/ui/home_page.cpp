@@ -1,6 +1,7 @@
 #include "home_page.h"
 
 #include "campus_artwork.h"
+#include "combo_box.h"
 #include "copy.h"
 #include "page_header.h"
 #include "primary_action_bar.h"
@@ -176,12 +177,12 @@ qint64 boundedQint64(std::uint64_t value)
 HomePage::HomePage(QWidget* parent)
     : PageScaffold(parent)
 {
-    header()->setContent(QStringLiteral("下午好"), QStringLiteral("正在读取当前状态"), QString());
+    header()->setContent(QStringLiteral("下午好"), QString(), QString());
     header()->setTrailingText(QString());
 
     m_content = new QWidget;
     auto* contentLayout = new QVBoxLayout(m_content);
-    contentLayout->setContentsMargins(24, 24, 24, 24);
+    contentLayout->setContentsMargins(20, 20, 20, 20);
     contentLayout->setSpacing(0);
 
     m_columns = new QBoxLayout(QBoxLayout::LeftToRight);
@@ -189,6 +190,7 @@ HomePage::HomePage(QWidget* parent)
     m_columns->setSpacing(24);
     m_left = new QWidget(m_content);
     auto* leftLayout = new QVBoxLayout(m_left);
+    m_leftLayout = leftLayout;
     leftLayout->setContentsMargins(0, 0, 0, 0);
     leftLayout->setSpacing(0);
 
@@ -198,41 +200,35 @@ HomePage::HomePage(QWidget* parent)
     m_instanceMeta->setObjectName(QStringLiteral("InstanceMeta"));
     leftLayout->addWidget(m_instanceName);
     leftLayout->addWidget(m_instanceMeta);
-
-    auto* topDivider = new QFrame(m_left);
-    topDivider->setObjectName(QStringLiteral("Divider"));
-    topDivider->setFixedHeight(1);
-    leftLayout->addSpacing(18);
-    leftLayout->addWidget(topDivider);
-    leftLayout->addSpacing(18);
+    leftLayout->addSpacing(10);
 
     auto* readinessTitle = new QLabel(QStringLiteral("准备状态"), m_left);
     readinessTitle->setObjectName(QStringLiteral("SectionTitle"));
     leftLayout->addWidget(readinessTitle);
-    leftLayout->addSpacing(8);
+    leftLayout->addSpacing(4);
     m_accountRow = new StatusRow(m_left);
     m_javaRow = new StatusRow(m_left);
     m_instanceRow = new StatusRow(m_left);
     leftLayout->addWidget(m_accountRow);
     leftLayout->addWidget(m_javaRow);
     leftLayout->addWidget(m_instanceRow);
-    leftLayout->addSpacing(16);
+    leftLayout->addSpacing(10);
 
     auto* summaryTitle = new QLabel(QStringLiteral("启动摘要"), m_left);
     summaryTitle->setObjectName(QStringLiteral("SectionTitle"));
     leftLayout->addWidget(summaryTitle);
-    leftLayout->addSpacing(6);
+    leftLayout->addSpacing(4);
     m_memoryRow = new SummaryRow(m_left);
     m_launchRow = new SummaryRow(m_left);
     leftLayout->addWidget(m_memoryRow);
     leftLayout->addWidget(m_launchRow);
-    leftLayout->addSpacing(10);
+    leftLayout->addSpacing(8);
 
     m_modpackSection = new QWidget(m_left);
     m_modpackSection->setObjectName(QStringLiteral("ModpackSection"));
     auto* modpackLayout = new QVBoxLayout(m_modpackSection);
-    modpackLayout->setContentsMargins(0, 0, 0, 8);
-    modpackLayout->setSpacing(6);
+    modpackLayout->setContentsMargins(0, 0, 0, 4);
+    modpackLayout->setSpacing(4);
 
     m_vanillaSection = new QWidget(m_modpackSection);
     m_vanillaSection->setObjectName(QStringLiteral("VanillaSection"));
@@ -252,18 +248,9 @@ HomePage::HomePage(QWidget* parent)
     auto* vanillaRow = new QHBoxLayout();
     vanillaRow->setContentsMargins(0, 2, 0, 0);
     vanillaRow->setSpacing(8);
-    m_vanillaVersion = new QComboBox(m_vanillaSection);
+    m_vanillaVersion = new ComboBox(m_vanillaSection);
     m_vanillaVersion->setObjectName(QStringLiteral("VanillaVersionCombo"));
     m_vanillaVersion->setAccessibleName(QStringLiteral("原版版本"));
-    m_vanillaVersion->setStyleSheet(
-        QStringLiteral(
-            "QComboBox { min-height: 34px; padding: 0 8px; background: %1;"
-            " border: 1px solid %2; border-radius: 7px; color: %3; font-size: 12.5px; }"
-            "QComboBox:focus { border: 2px solid %4; padding: 0 7px; }"
-            "QComboBox:disabled { background: %5; color: %6; border-color: %2; }")
-            .arg(QLatin1String(theme::kSurface), QLatin1String(theme::kLine),
-                 QLatin1String(theme::kInk), QLatin1String(theme::kFocus),
-                 QLatin1String(theme::kSunken), QLatin1String(theme::kDisabledText)));
     m_vanillaInstall = new QPushButton(QStringLiteral("安装原版"), m_vanillaSection);
     m_vanillaInstall->setObjectName(QStringLiteral("DialogAction"));
     m_vanillaInstall->setCursor(Qt::PointingHandCursor);
@@ -337,7 +324,7 @@ HomePage::HomePage(QWidget* parent)
     instanceRow->setSpacing(8);
     auto* instanceLabel = new QLabel(QStringLiteral("当前实例"), m_modpackSection);
     instanceLabel->setObjectName(QStringLiteral("DetailLabel"));
-    m_modpackInstance = new QComboBox(m_modpackSection);
+    m_modpackInstance = new ComboBox(m_modpackSection);
     m_modpackInstance->setObjectName(QStringLiteral("ModpackInstanceCombo"));
     m_modpackInstance->setAccessibleName(QStringLiteral("当前游戏实例"));
     instanceRow->addWidget(instanceLabel, 0, Qt::AlignVCenter);
@@ -418,31 +405,33 @@ HomePage::HomePage(QWidget* parent)
     leftLayout->addWidget(m_footnote);
     leftLayout->addStretch(1);
 
+#ifndef HUSTMCL_PUBLIC_RELEASE
     m_divider = new QFrame(m_content);
     m_divider->setObjectName(QStringLiteral("VDivider"));
     m_divider->setFixedWidth(1);
+#endif
 
     m_right = new QWidget(m_content);
+    m_right->setObjectName(QStringLiteral("ArtworkColumn"));
     m_right->setMaximumWidth(226);
     auto* rightLayout = new QVBoxLayout(m_right);
+    m_rightLayout = rightLayout;
     rightLayout->setContentsMargins(0, 0, 0, 0);
     rightLayout->setSpacing(8);
     m_artwork = new CampusArtwork(m_right);
     m_artwork->setObjectName(QStringLiteral("CampusArtwork"));
+#ifdef HUSTMCL_PUBLIC_RELEASE
+    m_artwork->setMottoTone(CampusArtwork::MottoTone::Paper);
+    m_artwork->setFixedSize(226, 208);
+    rightLayout->addWidget(m_artwork, 0, Qt::AlignHCenter);
+    rightLayout->addStretch(1);
+#else
     m_artwork->setFixedSize(226, 280);
     rightLayout->addWidget(m_artwork, 0, Qt::AlignHCenter);
-#ifdef HUSTMCL_PUBLIC_RELEASE
-    m_artCaption = new QLabel(QStringLiteral("校园的树影落在桌面上，准备好就开始新的旅程。"), m_right);
-#else
     m_artCaption = new QLabel(QStringLiteral("小科陪你，开启新世界。"), m_right);
-#endif
     m_artCaption->setObjectName(QStringLiteral("SidebarCaption"));
     m_artCaption->setWordWrap(true);
-#ifdef HUSTMCL_PUBLIC_RELEASE
-    m_artSub = new QLabel(QStringLiteral("整理好行囊，从这一页出发。"), m_right);
-#else
     m_artSub = new QLabel(QStringLiteral("树荫下的片刻，也是冒险的起点。"), m_right);
-#endif
     m_artSub->setObjectName(QStringLiteral("SidebarSub"));
     m_artSub->setWordWrap(true);
     rightLayout->addWidget(m_artCaption);
@@ -461,9 +450,12 @@ HomePage::HomePage(QWidget* parent)
     rightLayout->addWidget(m_settingsLink, 0, Qt::AlignLeft);
     rightLayout->addWidget(m_logsLink, 0, Qt::AlignLeft);
     rightLayout->addStretch(1);
+#endif
 
     m_columns->addWidget(m_left, 1);
+#ifndef HUSTMCL_PUBLIC_RELEASE
     m_columns->addWidget(m_divider, 0);
+#endif
     m_columns->addWidget(m_right, 0);
     contentLayout->addLayout(m_columns);
     setContent(m_content);
@@ -485,8 +477,10 @@ HomePage::HomePage(QWidget* parent)
             emit installRequested();
         }
     });
+#ifndef HUSTMCL_PUBLIC_RELEASE
     connect(m_settingsLink, &QPushButton::clicked, this, &HomePage::settingsRequested);
     connect(m_logsLink, &QPushButton::clicked, this, &HomePage::logsRequested);
+#endif
     connect(m_modpackPick, &QPushButton::clicked, this, &HomePage::chooseImportFile);
     connect(m_modpackInstance, &QComboBox::currentIndexChanged,
             this, [this](int index) {
@@ -565,12 +559,7 @@ void HomePage::setSnapshot(const application::HomeSnapshot& snapshot)
     if (instanceMeta.isEmpty()) {
         instanceMeta = QStringLiteral("等待安装");
     }
-    QString headerSubtitle = instanceName;
-    if (!snapshot.instance.versionLabel.isEmpty()) {
-        headerSubtitle = QStringLiteral("%1 · Minecraft %2")
-                             .arg(instanceName, snapshot.instance.versionLabel);
-    }
-    header()->setContent(greeting, headerSubtitle, snapshot.timeLabel);
+    header()->setContent(greeting, QString(), snapshot.timeLabel);
     m_instanceName->setText(instanceName);
     m_instanceMeta->setText(instanceMeta);
 
@@ -1150,9 +1139,13 @@ void HomePage::applyActionBar()
 void HomePage::setDecorationsVisible(bool visible)
 {
     PageScaffold::setDecorationsVisible(visible);
+    m_decorationsVisible = visible;
     m_artwork->setVisible(visible);
+#ifndef HUSTMCL_PUBLIC_RELEASE
     m_artCaption->setVisible(visible);
     m_artSub->setVisible(visible);
+#endif
+    updateResponsiveLayout();
 }
 
 void HomePage::focusPrimaryAction()
@@ -1191,10 +1184,39 @@ void HomePage::resizeEvent(QResizeEvent* event)
 
 void HomePage::updateResponsiveLayout()
 {
-    if (!m_columns) {
+    if (!m_columns || !m_leftLayout || !m_rightLayout) {
         return;
     }
     const bool vertical = width() < 820;
+#ifdef HUSTMCL_PUBLIC_RELEASE
+    if (vertical) {
+        m_columns->setDirection(QBoxLayout::TopToBottom);
+        m_columns->setSpacing(0);
+        m_right->setMaximumWidth(QWIDGETSIZE_MAX);
+        if (m_leftLayout->indexOf(m_artwork) != 0) {
+            m_leftLayout->insertWidget(0, m_artwork);
+        }
+        m_right->hide();
+        m_artwork->setMinimumWidth(0);
+        m_artwork->setMaximumWidth(QWIDGETSIZE_MAX);
+        m_artwork->setContentsMargins(0, 0, 0, 8);
+        m_artwork->setFixedHeight(62);
+        m_artwork->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        m_artwork->setVisible(m_decorationsVisible);
+    } else {
+        m_columns->setDirection(QBoxLayout::LeftToRight);
+        m_columns->setSpacing(24);
+        if (m_rightLayout->indexOf(m_artwork) != 0) {
+            m_rightLayout->insertWidget(0, m_artwork);
+        }
+        m_artwork->setContentsMargins(0, 0, 0, 0);
+        m_artwork->setFixedSize(226, 208);
+        m_artwork->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        m_right->setMaximumWidth(226);
+        m_right->setVisible(m_decorationsVisible);
+        m_artwork->setVisible(m_decorationsVisible);
+    }
+#else
     if (vertical) {
         m_columns->setDirection(QBoxLayout::TopToBottom);
         m_columns->setSpacing(20);
@@ -1208,6 +1230,7 @@ void HomePage::updateResponsiveLayout()
         m_right->setMaximumWidth(226);
         m_artwork->setFixedSize(226, 280);
     }
+#endif
 }
 
 QString HomePage::actionTitle(const application::HomeSnapshot& snapshot) const

@@ -1,5 +1,6 @@
 #include "settings_page.h"
 
+#include "combo_box.h"
 #include "copy.h"
 #include "elided_label.h"
 #include "page_header.h"
@@ -34,7 +35,7 @@ SettingsPage::SettingsPage(QWidget* parent)
     modeTitle->setObjectName(QStringLiteral("SectionTitle"));
     layout->addWidget(modeTitle);
     layout->addSpacing(8);
-    m_loginMode = new QComboBox(content);
+    m_loginMode = new ComboBox(content);
     m_loginMode->setObjectName(QStringLiteral("LoginModeSelector"));
     m_loginMode->setAccessibleName(QStringLiteral("登录方式"));
     m_loginMode->addItem(QStringLiteral("微软账号（正版）"));

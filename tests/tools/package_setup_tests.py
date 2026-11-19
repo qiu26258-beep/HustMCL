@@ -140,6 +140,7 @@ class PackageTests(unittest.TestCase):
         self.assertFalse((output / "payload/runtime").exists())
         self.assertTrue((output / "payload/Qt6Core.dll").exists())
         self.assertEqual((output / "payload/使用说明.txt").read_bytes(), (ROOT / "tools/public-readme.txt").read_bytes())
+        self.assertEqual((output / "payload/LICENSE").read_bytes(), (ROOT / "LICENSE").read_bytes())
 
     def test_junction_parent_rejected(self):
         import subprocess
@@ -162,6 +163,8 @@ class PackageTests(unittest.TestCase):
         body[128:132] = b"PE\0\0"
         struct.pack_into("<H", body, 132, 0x8664)
         launcher.write_bytes(body + "0.1.0-public-preview".encode("utf-16le"))
+        self.records = [record for record in self.records if not record["path"].startswith(("data/", "runtime/"))]
+        self.save()
         credential = self.package / "data/credentials/microsoft.dpapi"
         credential.parent.mkdir(parents=True)
         credential.write_bytes(b"private test credential")
@@ -171,10 +174,12 @@ class PackageTests(unittest.TestCase):
             self.assertIn("/DInstallId=HustMCL.AccountPreview", command)
             self.assertIn("/DInstallDirName=HustMCL-Accounts", command)
             self.assertIn("/DShortcutName=HustMCL Accounts", command)
+            self.assertIn("/DReleaseVersion=0.1.0-preview.5", command)
             (output / "HustMCL-Setup-Windows-x64.exe").write_bytes(b"fixture installer")
 
         with patch.object(setup.subprocess, "run", side_effect=compile_fixture):
-            setup.build(self.package, output, self.root / "compiler.exe", ROOT / "tools/hustmcl_setup.iss", launcher, "accounts")
+            setup.build(self.package, output, self.root / "compiler.exe", ROOT / "tools/hustmcl_setup.iss",
+                        launcher, "accounts", release_version="0.1.0-preview.5")
         self.assertFalse((output / "payload/data").exists())
         self.assertFalse((output / "payload/runtime").exists())
         self.assertEqual(credential.read_bytes(), b"private test credential")

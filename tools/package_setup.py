@@ -15,14 +15,15 @@ import struct
 import subprocess
 
 
-ROOT_FILES = {"hustmcl_desktop.exe", "hustmcl.ico", "使用说明.txt"}
+ROOT_FILES = {"hustmcl_desktop.exe", "hustmcl.ico", "使用说明.txt", "LICENSE"}
 ROOT_DLLS = {"D3Dcompiler_47.dll", "libgcc_s_seh-1.dll", "libstdc++-6.dll",
              "libwinpthread-1.dll", "Qt6Core.dll", "Qt6Gui.dll", "Qt6Network.dll", "Qt6Widgets.dll"}
 DIRECTORIES = {"runtime", "platforms", "imageformats", "networkinformation", "styles",
                "tls", "generic", "THIRD-PARTY-NOTICES"}
 OMITTED = {"创建桌面快捷方式.vbs"}
-REQUIRED = {"hustmcl_desktop.exe", "Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll",
-            "Qt6Network.dll", "platforms/qwindows.dll", "runtime/bin/java.exe"}
+LAUNCHER_REQUIRED = {"hustmcl_desktop.exe", "Qt6Core.dll", "Qt6Gui.dll", "Qt6Widgets.dll",
+                     "Qt6Network.dll", "platforms/qwindows.dll"}
+REQUIRED = LAUNCHER_REQUIRED | {"runtime/bin/java.exe"}
 REPARSE = 0x400
 CHANNELS = {
     "trial": (),
@@ -72,7 +73,7 @@ def release_path(value: str) -> str:
     raise ValueError(f"File is outside the release allowlist: {value}")
 
 
-def validate_payload(package: Path) -> list[dict]:
+def validate_payload(package: Path, *, include_game: bool = True) -> list[dict]:
     manifest = package / "FILES.sha256.json"
     regular_path(manifest)
     records = json.loads(manifest.read_text(encoding="utf-8-sig"))
@@ -98,9 +99,13 @@ def validate_payload(package: Path) -> list[dict]:
         if relative not in OMITTED:
             result.append({"path": relative, "size": size, "sha256": sha.lower()})
     paths = {entry["path"] for entry in result}
-    if not REQUIRED <= paths or not any(p.startswith("THIRD-PARTY-NOTICES/") for p in paths):
+    required = REQUIRED if include_game else LAUNCHER_REQUIRED
+    if not required <= paths or not any(p.startswith("THIRD-PARTY-NOTICES/") for p in paths):
         raise ValueError("Required executable, runtime or notices missing")
-    if not all(any(p.startswith("data/" + folder + "/") for p in paths) for folder in ("assets", "libraries", "versions")):
+    if include_game and not all(
+        any(p.startswith("data/" + folder + "/") for p in paths)
+        for folder in ("assets", "libraries", "versions")
+    ):
         raise ValueError("Game payload is incomplete")
     return sorted(result, key=lambda record: record["path"].casefold())
 
@@ -145,28 +150,36 @@ def launcher_records(records: list[dict], launcher: Path) -> list[dict]:
             if record["path"] == "hustmcl_desktop.exe" else dict(record) for record in records]
 
 
-def build(package: Path, output: Path, compiler: Path, script: Path, launcher: Path | None = None, channel: str = "trial") -> Path:
+def build(package: Path, output: Path, compiler: Path, script: Path, launcher: Path | None = None,
+          channel: str = "trial", *, release_version: str = "0.1.0") -> Path:
     for path in (package, output, compiler, script):
         if any(c in str(path) for c in '\r\n"{};'):
             raise ValueError("Unsupported compiler input path")
-    records = validate_payload(package)
+    if channel not in CHANNELS:
+        raise ValueError("Unknown installer channel")
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*)?", release_version):
+        raise ValueError("Invalid installer release version")
+    public = channel in {"public", "accounts"}
+    records = validate_payload(package, include_game=not public)
     overrides = {}
     if launcher:
         records = launcher_records(records, launcher)
         overrides["hustmcl_desktop.exe"] = launcher
-    if channel not in CHANNELS:
-        raise ValueError("Unknown installer channel")
-    if channel in {"public", "accounts"}:
+    if public:
         if launcher is None:
             raise ValueError("Public distribution requires an explicit public launcher")
         if "0.1.0-public-preview".encode("utf-16le") not in launcher.read_bytes():
             raise ValueError("Launcher was not built for public distribution")
         # No Minecraft payload or bundled JRE. Java is acquired per instance.
+        tools_dir = Path(__file__).resolve().parent
+        documents = {
+            "使用说明.txt": tools_dir / "public-readme.txt",
+            "THIRD-PARTY-NOTICES/README.txt": tools_dir / "public-notices.txt",
+            "LICENSE": tools_dir.parent / "LICENSE",
+        }
         records = [r for r in records if not r["path"].startswith(("data/", "runtime/"))
-                   and r["path"] not in {"使用说明.txt", "THIRD-PARTY-NOTICES/README.txt"}]
-        for relative, name in (("使用说明.txt", "public-readme.txt"),
-                               ("THIRD-PARTY-NOTICES/README.txt", "public-notices.txt")):
-            source = Path(__file__).resolve().parent / name
+                   and r["path"] not in documents]
+        for relative, source in documents.items():
             regular_path(source)
             records.append({"path": relative, "size": source.stat().st_size, "sha256": digest(source)})
             overrides[relative] = source
@@ -179,7 +192,8 @@ def build(package: Path, output: Path, compiler: Path, script: Path, launcher: P
     records.append({"path": license_path, "size": license_source.stat().st_size, "sha256": digest(license_source)})
     overrides[license_path] = license_source
     manifest = write_inputs(package, output, records, overrides)
-    command = [str(compiler), f"/DBuildInputs={output}", f"/DPackageId={digest(manifest)}", str(script)]
+    command = [str(compiler), f"/DBuildInputs={output}", f"/DPackageId={digest(manifest)}",
+               f"/DReleaseVersion={release_version}", str(script)]
     if CHANNELS[channel]:
         command[1:1] = [f"/D{key}={value}" for key, value in zip(
             ("InstallId", "AppDisplayName", "InstallDirName", "ShortcutName"), CHANNELS[channel])]
@@ -189,7 +203,8 @@ def build(package: Path, output: Path, compiler: Path, script: Path, launcher: P
     sha = digest(exe)
     (output / (exe.name + ".sha256")).write_text(f"{sha}  {exe.name}\n", encoding="ascii")
     (output / "build.json").write_text(json.dumps({"fileCount": len(records), "payloadBytes": sum(r["size"] for r in records),
-        "packageId": digest(manifest), "installerSha256": sha, "channel": channel}, indent=2), encoding="utf-8")
+        "packageId": digest(manifest), "installerSha256": sha, "channel": channel,
+        "releaseVersion": release_version}, indent=2), encoding="utf-8")
     return exe
 
 
@@ -201,10 +216,11 @@ def main() -> None:
     parser.add_argument("--compiler", type=Path, default=workspace / ".deps/InnoSetup/ISCC.exe")
     parser.add_argument("--launcher", type=Path, help="Replace only the verified package launcher in the private snapshot")
     parser.add_argument("--channel", choices=tuple(CHANNELS), default="trial")
+    parser.add_argument("--release-version", default="0.1.0", help="Version shown by Windows for this installer")
     args = parser.parse_args()
     # absolute() preserves symlink components so regular_path can reject them.
     print(build(args.package.absolute(), args.output.absolute(), args.compiler.absolute(), workspace / "tools/hustmcl_setup.iss",
-                args.launcher.absolute() if args.launcher else None, args.channel))
+                args.launcher.absolute() if args.launcher else None, args.channel, release_version=args.release_version))
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 {
-  "localRevision": "715dc3acb2980613032f7abda0d198f1d231f494",
-  "publicBuild": true,
-  "files": 205
+  "version": "0.1.0-preview.5",
+  "publicBase": "0ab7f10948352bd246a4a9c9f83e9726d2d3132c",
+  "localUiRevision": "3c50cc1",
+  "publicBuild": true
 }

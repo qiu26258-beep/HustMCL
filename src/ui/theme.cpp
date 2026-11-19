@@ -148,7 +148,7 @@ QListWidget#Navigation {
     color: @railText@;
 }
 QListWidget#Navigation::item {
-    height: 44px;
+    height: 46px;
     padding-left: 14px;
     border-radius: 6px;
     border-left: 3px solid transparent;
@@ -200,17 +200,17 @@ QWidget#DeskContent {
 }
 QLabel#InstanceName {
     color: @ink@;
-    font-size: 30px;
+    font-size: 24px;
     font-weight: 600;
 }
 QLabel#InstanceMeta {
     color: @muted@;
-    font-size: 13px;
+    font-size: 12.5px;
 }
 QLabel#SectionTitle {
     color: @ink@;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 700;
 }
 QLabel#StatusCheck {
     min-width: 18px;
@@ -370,24 +370,65 @@ QLineEdit#MarketSearchInput:disabled, QLineEdit#MarketVersionInput:disabled {
     color: @disabledText@;
     border-color: @line@;
 }
-QComboBox#MarketLoader {
-    min-height: 36px;
-    min-width: 132px;
-    max-width: 146px;
-    padding: 0 8px;
+QComboBox#LoginModeSelector,
+QComboBox#MarketLoader,
+QComboBox#VanillaVersionCombo,
+QComboBox#ModpackInstanceCombo {
+    min-height: 34px;
+    padding: 0 24px 0 8px;
     background: @surface@;
     border: 1px solid @line@;
     border-radius: 7px;
     color: @ink@;
     font-size: 12.5px;
 }
-QComboBox#MarketLoader:focus {
+QComboBox#LoginModeSelector:focus,
+QComboBox#MarketLoader:focus,
+QComboBox#VanillaVersionCombo:focus,
+QComboBox#ModpackInstanceCombo:focus {
     border: 2px solid @focus@;
-    padding: 0 7px;
+    padding: 0 23px 0 7px;
 }
-QComboBox#MarketLoader:disabled {
+QComboBox#LoginModeSelector:disabled,
+QComboBox#MarketLoader:disabled,
+QComboBox#VanillaVersionCombo:disabled,
+QComboBox#ModpackInstanceCombo:disabled {
     background: @sunken@;
     color: @disabledText@;
+    border-color: @lineFaint@;
+}
+QComboBox#LoginModeSelector::drop-down,
+QComboBox#MarketLoader::drop-down,
+QComboBox#VanillaVersionCombo::drop-down,
+QComboBox#ModpackInstanceCombo::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 24px;
+    border: none;
+    background: transparent;
+}
+QComboBox#LoginModeSelector::down-arrow,
+QComboBox#MarketLoader::down-arrow,
+QComboBox#VanillaVersionCombo::down-arrow,
+QComboBox#ModpackInstanceCombo::down-arrow {
+    image: none;
+    width: 0;
+    height: 0;
+}
+QComboBox#LoginModeSelector QAbstractItemView,
+QComboBox#MarketLoader QAbstractItemView,
+QComboBox#VanillaVersionCombo QAbstractItemView,
+QComboBox#ModpackInstanceCombo QAbstractItemView {
+    background: @surface@;
+    border: 1px solid @line@;
+    color: @ink@;
+    outline: none;
+    selection-background-color: @primarySoft@;
+    selection-color: @ink@;
+}
+QComboBox#MarketLoader {
+    min-width: 132px;
+    max-width: 146px;
 }
 QPushButton#MarketSearch {
     min-height: 36px;
@@ -473,24 +514,6 @@ QLabel#ImportDropTitle {
 QLabel#ImportDropSub {
     color: @muted@;
     font-size: 11.5px;
-}
-QComboBox#ModpackInstanceCombo {
-    min-height: 34px;
-    padding: 0 8px;
-    background: @surface@;
-    border: 1px solid @line@;
-    border-radius: 7px;
-    color: @ink@;
-    font-size: 12.5px;
-}
-QComboBox#ModpackInstanceCombo:focus {
-    border: 2px solid @focus@;
-    padding: 0 7px;
-}
-QComboBox#ModpackInstanceCombo:disabled {
-    background: @sunken@;
-    color: @disabledText@;
-    border-color: @lineFaint@;
 }
 QProgressBar#ImportProgress {
     min-height: 8px;

@@ -87,11 +87,11 @@ Sidebar::Sidebar(QWidget* parent)
     m_nav->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_nav->setFixedHeight(5 * 46);
     const QStringList labels = {
-        QStringLiteral("01    首页"),
-        QStringLiteral("02    安装游戏"),
-        QStringLiteral("03    设置"),
-        QStringLiteral("04    日志与错误"),
-        QStringLiteral("05    模组市场"),
+        QStringLiteral("首页"),
+        QStringLiteral("安装游戏"),
+        QStringLiteral("设置"),
+        QStringLiteral("日志与错误"),
+        QStringLiteral("模组市场"),
     };
     for (int i = 0; i < labels.size(); ++i) {
         auto* item = new QListWidgetItem(labels.at(i), m_nav);
@@ -117,10 +117,9 @@ Sidebar::Sidebar(QWidget* parent)
     layout->addWidget(m_artwork);
 
 #ifdef HUSTMCL_PUBLIC_RELEASE
-    m_caption = new QLabel(QStringLiteral("校园的树影下，慢慢准备。"), this);
+    m_artwork->setMottoTone(CampusArtwork::MottoTone::Forest);
 #else
     m_caption = new QLabel(QStringLiteral("小科陪你，慢慢准备。"), this);
-#endif
     m_caption->setObjectName(QStringLiteral("SidebarCaption"));
     m_caption->setWordWrap(true);
     m_caption->hide();
@@ -131,6 +130,7 @@ Sidebar::Sidebar(QWidget* parent)
     m_subCaption->setWordWrap(true);
     m_subCaption->hide();
     layout->addWidget(m_subCaption);
+#endif
 
     layout->addStretch(1);
 
@@ -196,10 +196,10 @@ void Sidebar::setRealMode(bool realMode)
 {
     m_realMode = realMode;
     if (realMode) {
-        m_nav->item(kPageInstall)->setText(QStringLiteral("02    实例与检查"));
-        m_nav->item(kPageSettings)->setText(QStringLiteral("03    设置"));
-        m_nav->item(kPageLogs)->setText(QStringLiteral("04    日志与错误"));
-        m_nav->item(kPageMarket)->setText(QStringLiteral("05    模组市场"));
+        m_nav->item(kPageInstall)->setText(QStringLiteral("实例与检查"));
+        m_nav->item(kPageSettings)->setText(QStringLiteral("设置"));
+        m_nav->item(kPageLogs)->setText(QStringLiteral("日志与错误"));
+        m_nav->item(kPageMarket)->setText(QStringLiteral("模组市场"));
         for (int row = kPageSettings; row <= kPageLogs; ++row) {
             auto* item = m_nav->item(row);
             item->setFlags(item->flags() | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
@@ -209,13 +209,14 @@ void Sidebar::setRealMode(bool realMode)
         m_navNote->setText(QStringLiteral("首次启动会检查本地文件并检测 Java"));
         m_navNote->setToolTip(
             QStringLiteral("启动前会先确认文件与 Java，准备好后再打开游戏。"));
+        m_navNote->setVisible(false);
         applyModeCopy();
         updateAccountPresentation();
     } else {
         m_badge->setText(QStringLiteral("界面演示 · 样例数据"));
         m_badge->setToolTip(
             QStringLiteral("当前窗口只演示页面状态，不执行真实账号、下载或游戏启动操作。"));
-        m_nav->item(kPageInstall)->setText(QStringLiteral("02    安装游戏"));
+        m_nav->item(kPageInstall)->setText(QStringLiteral("安装游戏"));
         for (int row = kPageSettings; row <= kPageLogs; ++row) {
             auto* item = m_nav->item(row);
             item->setFlags(item->flags() & ~(Qt::ItemIsEnabled | Qt::ItemIsSelectable));
@@ -224,6 +225,7 @@ void Sidebar::setRealMode(bool realMode)
         updateMarketItem();
         m_navNote->setText(QStringLiteral("设置与日志将在后续批次提供"));
         m_navNote->setToolTip(QString());
+        m_navNote->setVisible(!m_compact);
         m_accountNote->setText(QStringLiteral("演示窗口不会执行账号、下载或启动操作"));
         m_footer->setText(QStringLiteral("HustMCL 0.1 · 界面演示"));
         updateAccountLink();
@@ -358,6 +360,7 @@ void Sidebar::setCompact(bool compact)
         m_nav->item(row)->setSizeHint(QSize(0, itemHeight));
     }
     m_nav->setFixedHeight(m_nav->count() * itemHeight);
+    m_navNote->setVisible(!compact && !m_realMode);
     m_accountNote->setVisible(!compact);
     m_footer->setVisible(!compact);
     updateArtworkVisibility();
@@ -367,8 +370,10 @@ void Sidebar::updateArtworkVisibility()
 {
     const bool visible = m_artworkRequested && !m_compact;
     m_artwork->setVisible(visible);
+#ifndef HUSTMCL_PUBLIC_RELEASE
     m_caption->setVisible(visible);
     m_subCaption->setVisible(visible);
+#endif
 }
 
 } // namespace hustmcl::ui

@@ -1,5 +1,6 @@
 #include "content_market_page.h"
 
+#include "combo_box.h"
 #include "page_header.h"
 #include "primary_action_bar.h"
 
@@ -76,18 +77,6 @@ ContentMarketPage::ContentMarketPage(application::ContentController* controller,
     layout->setContentsMargins(24, 24, 24, 24);
     layout->setSpacing(0);
 
-    auto* searchTitle = new QLabel(QStringLiteral("搜索模组"), m_content);
-    searchTitle->setObjectName(QStringLiteral("SectionTitle"));
-    layout->addWidget(searchTitle);
-    layout->addSpacing(4);
-    auto* searchNote = new QLabel(
-        QStringLiteral("按关键词查找 Modrinth 项目；Minecraft 版本和加载器可以留空。"),
-        m_content);
-    searchNote->setObjectName(QStringLiteral("DetailNote"));
-    searchNote->setWordWrap(true);
-    layout->addWidget(searchNote);
-    layout->addSpacing(8);
-
     m_searchText = new QLineEdit(m_content);
     m_searchText->setObjectName(QStringLiteral("MarketSearchInput"));
     m_searchText->setPlaceholderText(QStringLiteral("搜索模组名称或描述"));
@@ -101,7 +90,7 @@ ContentMarketPage::ContentMarketPage(application::ContentController* controller,
     m_gameVersion->setMaxLength(32);
     m_gameVersion->setFixedWidth(150);
     m_gameVersion->setAccessibleName(QStringLiteral("Minecraft 版本筛选"));
-    m_loader = new QComboBox(m_content);
+    m_loader = new ComboBox(m_content);
     m_loader->setObjectName(QStringLiteral("MarketLoader"));
     m_loader->setAccessibleName(QStringLiteral("加载器筛选"));
     m_loader->addItem(QStringLiteral("全部加载器"), QString());
