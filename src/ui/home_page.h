@@ -5,6 +5,7 @@
 #include "page_scaffold.h"
 
 #include <QList>
+#include <QTime>
 #include <QUrl>
 #include <QWidget>
 
@@ -44,6 +45,7 @@ public:
     // multiple and unsupported files before asking the application to import.
     void handleDroppedUrls(const QList<QUrl>& urls);
     void setDecorationsVisible(bool visible);
+    void refreshTheme(const QTime& localTime = QTime::currentTime());
     void focusPrimaryAction();
     // Scrolls the home page to the vanilla installer and focuses its selector.
     void focusVanillaInstaller();
@@ -86,22 +88,29 @@ private:
     application::ModpackSnapshot m_modpackSnapshot;
     bool m_primaryPending = false;
     bool m_modpackAvailable = false;
+    bool m_decorationsVisible = true;
+
     QWidget* m_content = nullptr;
+    QFrame* m_heroFrame = nullptr;
+    CampusArtwork* m_artwork = nullptr;
+    QLabel* m_landmarkBadge = nullptr;
+    QLabel* m_skyBadge = nullptr;
+    QLabel* m_instanceName = nullptr;
+    QLabel* m_instanceMeta = nullptr;
+
     QBoxLayout* m_columns = nullptr;
     QWidget* m_left = nullptr;
     QWidget* m_right = nullptr;
     QBoxLayout* m_leftLayout = nullptr;
     QBoxLayout* m_rightLayout = nullptr;
-    QFrame* m_divider = nullptr;
-    bool m_decorationsVisible = true;
-    QLabel* m_instanceName = nullptr;
-    QLabel* m_instanceMeta = nullptr;
+
     StatusRow* m_accountRow = nullptr;
     StatusRow* m_javaRow = nullptr;
     StatusRow* m_instanceRow = nullptr;
     SummaryRow* m_memoryRow = nullptr;
     SummaryRow* m_launchRow = nullptr;
     QLabel* m_footnote = nullptr;
+
     QWidget* m_modpackSection = nullptr;
     QWidget* m_vanillaSection = nullptr;
     QComboBox* m_vanillaVersion = nullptr;
@@ -110,6 +119,7 @@ private:
     QLabel* m_vanillaVersionsError = nullptr;
     QLabel* m_vanillaHint = nullptr;
     QFrame* m_modpackDropZone = nullptr;
+    QLabel* m_dropIcon = nullptr;
     QPushButton* m_modpackPick = nullptr;
     QComboBox* m_modpackInstance = nullptr;
     QLabel* m_modpackPackName = nullptr;
@@ -121,9 +131,7 @@ private:
     QPushButton* m_modpackCancel = nullptr;
     QPushButton* m_modpackRetry = nullptr;
     QLabel* m_modpackNote = nullptr;
-    CampusArtwork* m_artwork = nullptr;
-    QLabel* m_artCaption = nullptr;
-    QLabel* m_artSub = nullptr;
+
     QPushButton* m_settingsLink = nullptr;
     QPushButton* m_logsLink = nullptr;
     PrimaryActionBar* m_actionBar = nullptr;

@@ -32,10 +32,11 @@ InstallPage::InstallPage(QWidget* parent)
     m_columns->setContentsMargins(0, 0, 0, 0);
     m_columns->setSpacing(24);
 
-    m_left = new QWidget(m_content);
-    m_left->setMaximumWidth(330);
+    m_left = new QFrame(m_content);
+    m_left->setObjectName(QStringLiteral("VoxelCard"));
+    m_left->setMaximumWidth(350);
     auto* leftLayout = new QVBoxLayout(m_left);
-    leftLayout->setContentsMargins(0, 0, 0, 0);
+    leftLayout->setContentsMargins(16, 14, 16, 14);
     leftLayout->setSpacing(8);
     auto* stepsTitle = new QLabel(QStringLiteral("安装步骤"), m_left);
     stepsTitle->setObjectName(QStringLiteral("SectionTitle"));
@@ -48,9 +49,10 @@ InstallPage::InstallPage(QWidget* parent)
     m_divider->setObjectName(QStringLiteral("VDivider"));
     m_divider->setFixedWidth(1);
 
-    m_right = new QWidget(m_content);
+    m_right = new QFrame(m_content);
+    m_right->setObjectName(QStringLiteral("VoxelCard"));
     auto* rightLayout = new QVBoxLayout(m_right);
-    rightLayout->setContentsMargins(0, 0, 0, 0);
+    rightLayout->setContentsMargins(16, 14, 16, 14);
     rightLayout->setSpacing(0);
     auto* installLabel = new QLabel(QStringLiteral("本次安装"), m_right);
     installLabel->setObjectName(QStringLiteral("DetailLabel"));

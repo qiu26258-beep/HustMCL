@@ -8,6 +8,8 @@
 #include "status_row.h"
 #include "summary_row.h"
 #include "theme.h"
+#include "voxel_icons.h"
+#include "xp_progress_bar.h"
 
 #include <QBoxLayout>
 #include <QComboBox>
@@ -18,15 +20,16 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFrame>
+#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMimeData>
-#include <QProgressBar>
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QScrollArea>
 #include <QSignalBlocker>
 #include <QStringList>
+#include <QStyle>
 #include <QUrl>
 #include <QVBoxLayout>
 
@@ -182,55 +185,100 @@ HomePage::HomePage(QWidget* parent)
 
     m_content = new QWidget;
     auto* contentLayout = new QVBoxLayout(m_content);
-    contentLayout->setContentsMargins(20, 20, 20, 20);
-    contentLayout->setSpacing(0);
+    contentLayout->setContentsMargins(18, 16, 18, 16);
+    contentLayout->setSpacing(14);
 
+    // ==================== 1. HERO DIORAMA BANNER (东九教学楼 + 华科南大门) ====================
+    m_heroFrame = new QFrame(m_content);
+    m_heroFrame->setObjectName(QStringLiteral("HeroBannerFrame"));
+    m_heroFrame->setMinimumHeight(138);
+    m_heroFrame->setMaximumHeight(156);
+    auto* heroStack = new QGridLayout(m_heroFrame);
+    heroStack->setContentsMargins(0, 0, 0, 0);
+    heroStack->setSpacing(0);
+
+    m_artwork = new CampusArtwork(m_heroFrame);
+    m_artwork->setObjectName(QStringLiteral("CampusArtwork"));
+    m_artwork->setDisplayStyle(CampusArtwork::Style::HeroPanorama);
+    m_artwork->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    heroStack->addWidget(m_artwork, 0, 0);
+
+    auto* heroOverlay = new QWidget(m_heroFrame);
+    heroOverlay->setAttribute(Qt::WA_TranslucentBackground);
+    auto* overlayLayout = new QVBoxLayout(heroOverlay);
+    overlayLayout->setContentsMargins(16, 12, 16, 14);
+    overlayLayout->setSpacing(4);
+
+    auto* tagRow = new QHBoxLayout();
+    tagRow->setContentsMargins(0, 0, 0, 0);
+    tagRow->setSpacing(8);
+    m_landmarkBadge = new QLabel(QStringLiteral("华中科技大学 · 东九 & 南大门"), heroOverlay);
+    m_landmarkBadge->setStyleSheet(
+        QStringLiteral("QLabel { background: #C94530; color: #FFFFFF; border-top: 2px solid #F07A67;"
+                       " border-bottom: 2px solid #7E2315; padding: 2px 8px; font-size: 11px; font-weight: 700; }"));
+    m_skyBadge = new QLabel(theme::skyPhaseLabel(m_artwork->skyPhase()), heroOverlay);
+    m_skyBadge->setStyleSheet(
+        QStringLiteral("QLabel { background: rgba(9, 18, 14, 185); color: #F7D47A;"
+                       " border: 1px solid #4A6D5D; padding: 2px 7px; font-size: 10.5px; font-weight: 600; }"));
+    tagRow->addWidget(m_landmarkBadge, 0);
+    tagRow->addWidget(m_skyBadge, 0);
+    tagRow->addStretch(1);
+    overlayLayout->addLayout(tagRow);
+    overlayLayout->addStretch(1);
+
+    m_instanceName = new QLabel(heroOverlay);
+    m_instanceName->setObjectName(QStringLiteral("InstanceName"));
+    m_instanceName->setStyleSheet(
+        QStringLiteral("QLabel { color: #FFFFFF; background: transparent; font-size: 21px; font-weight: 700; }"));
+    m_instanceMeta = new QLabel(heroOverlay);
+    m_instanceMeta->setObjectName(QStringLiteral("InstanceMeta"));
+    m_instanceMeta->setStyleSheet(
+        QStringLiteral("QLabel { color: #DCEBE2; background: rgba(8, 18, 14, 165);"
+                       " border: 1px solid rgba(110, 180, 140, 110); padding: 2px 8px; font-size: 11.5px; }"));
+    overlayLayout->addWidget(m_instanceName, 0, Qt::AlignLeft);
+    overlayLayout->addWidget(m_instanceMeta, 0, Qt::AlignLeft);
+
+    heroStack->addWidget(heroOverlay, 0, 0);
+    contentLayout->addWidget(m_heroFrame);
+
+    // ==================== 2. TWO-COLUMN BENTO VOXEL WORKSPACE ====================
     m_columns = new QBoxLayout(QBoxLayout::LeftToRight);
     m_columns->setContentsMargins(0, 0, 0, 0);
-    m_columns->setSpacing(24);
+    m_columns->setSpacing(14);
+
+    // LEFT COLUMN: Readiness Block + Vanilla/Modpack Acquisition Block
     m_left = new QWidget(m_content);
     auto* leftLayout = new QVBoxLayout(m_left);
     m_leftLayout = leftLayout;
     leftLayout->setContentsMargins(0, 0, 0, 0);
-    leftLayout->setSpacing(0);
+    leftLayout->setSpacing(12);
 
-    m_instanceName = new QLabel(m_left);
-    m_instanceName->setObjectName(QStringLiteral("InstanceName"));
-    m_instanceMeta = new QLabel(m_left);
-    m_instanceMeta->setObjectName(QStringLiteral("InstanceMeta"));
-    leftLayout->addWidget(m_instanceName);
-    leftLayout->addWidget(m_instanceMeta);
-    leftLayout->addSpacing(10);
-
-    auto* readinessTitle = new QLabel(QStringLiteral("准备状态"), m_left);
+    auto* readinessCard = new QFrame(m_left);
+    readinessCard->setObjectName(QStringLiteral("VoxelCard"));
+    auto* readinessLayout = new QVBoxLayout(readinessCard);
+    readinessLayout->setContentsMargins(14, 12, 14, 12);
+    readinessLayout->setSpacing(4);
+    auto* readinessTitle = new QLabel(QStringLiteral("准备状态"), readinessCard);
     readinessTitle->setObjectName(QStringLiteral("SectionTitle"));
-    leftLayout->addWidget(readinessTitle);
-    leftLayout->addSpacing(4);
-    m_accountRow = new StatusRow(m_left);
-    m_javaRow = new StatusRow(m_left);
-    m_instanceRow = new StatusRow(m_left);
-    leftLayout->addWidget(m_accountRow);
-    leftLayout->addWidget(m_javaRow);
-    leftLayout->addWidget(m_instanceRow);
-    leftLayout->addSpacing(10);
+    readinessLayout->addWidget(readinessTitle);
+    readinessLayout->addSpacing(2);
+    m_accountRow = new StatusRow(readinessCard);
+    m_javaRow = new StatusRow(readinessCard);
+    m_instanceRow = new StatusRow(readinessCard);
+    readinessLayout->addWidget(m_accountRow);
+    readinessLayout->addWidget(m_javaRow);
+    readinessLayout->addWidget(m_instanceRow);
+    leftLayout->addWidget(readinessCard);
 
-    auto* summaryTitle = new QLabel(QStringLiteral("启动摘要"), m_left);
-    summaryTitle->setObjectName(QStringLiteral("SectionTitle"));
-    leftLayout->addWidget(summaryTitle);
-    leftLayout->addSpacing(4);
-    m_memoryRow = new SummaryRow(m_left);
-    m_launchRow = new SummaryRow(m_left);
-    leftLayout->addWidget(m_memoryRow);
-    leftLayout->addWidget(m_launchRow);
-    leftLayout->addSpacing(8);
+    // Instance Acquisition Card (Vanilla Installer + Modpack Crafting Slot)
+    auto* modpackCard = new QFrame(m_left);
+    modpackCard->setObjectName(QStringLiteral("ModpackSection"));
+    m_modpackSection = modpackCard;
+    auto* modpackLayout = new QVBoxLayout(modpackCard);
+    modpackLayout->setContentsMargins(14, 12, 14, 12);
+    modpackLayout->setSpacing(8);
 
-    m_modpackSection = new QWidget(m_left);
-    m_modpackSection->setObjectName(QStringLiteral("ModpackSection"));
-    auto* modpackLayout = new QVBoxLayout(m_modpackSection);
-    modpackLayout->setContentsMargins(0, 0, 0, 4);
-    modpackLayout->setSpacing(4);
-
-    m_vanillaSection = new QWidget(m_modpackSection);
+    m_vanillaSection = new QWidget(modpackCard);
     m_vanillaSection->setObjectName(QStringLiteral("VanillaSection"));
     auto* vanillaLayout = new QVBoxLayout(m_vanillaSection);
     vanillaLayout->setContentsMargins(0, 0, 0, 0);
@@ -270,51 +318,55 @@ HomePage::HomePage(QWidget* parent)
     m_vanillaVersionsError->setObjectName(QStringLiteral("VanillaVersionsError"));
     m_vanillaVersionsError->setTextFormat(Qt::PlainText);
     m_vanillaVersionsError->setWordWrap(true);
-    m_vanillaVersionsError->setStyleSheet(
-        QStringLiteral(
-            "QLabel { color: %1; background: %2; border: 1px solid %3;"
-            " border-radius: 7px; padding: 7px 9px; font-size: 12px; }")
-            .arg(QLatin1String(theme::kError), QLatin1String(theme::kErrorSoft),
-                 QLatin1String(theme::kErrorLine)));
     m_vanillaVersionsError->hide();
     vanillaLayout->addWidget(m_vanillaVersionsError);
+
     m_vanillaHint = new QLabel(m_vanillaSection);
     m_vanillaHint->setObjectName(QStringLiteral("VanillaHint"));
     m_vanillaHint->setTextFormat(Qt::PlainText);
     m_vanillaHint->setWordWrap(true);
-    m_vanillaHint->setStyleSheet(
-        QStringLiteral("QLabel { color: %1; font-size: 11.5px; }")
-            .arg(QLatin1String(theme::kMuted)));
     m_vanillaHint->hide();
     vanillaLayout->addWidget(m_vanillaHint);
     modpackLayout->addWidget(m_vanillaSection);
 
-    auto* modpackTitle = new QLabel(QStringLiteral("或导入整合包"), m_modpackSection);
+    auto* sectionDiv = new QFrame(modpackCard);
+    sectionDiv->setObjectName(QStringLiteral("Divider"));
+    sectionDiv->setFixedHeight(2);
+    modpackLayout->addWidget(sectionDiv);
+
+    auto* modpackTitle = new QLabel(QStringLiteral("或导入整合包"), modpackCard);
     modpackTitle->setObjectName(QStringLiteral("SectionTitle"));
     modpackLayout->addWidget(modpackTitle);
 
-    m_modpackDropZone = new QFrame(m_modpackSection);
+    m_modpackDropZone = new QFrame(modpackCard);
     m_modpackDropZone->setObjectName(QStringLiteral("ImportDropZone"));
     m_modpackDropZone->setAcceptDrops(true);
     m_modpackDropZone->installEventFilter(this);
     auto* dropLayout = new QHBoxLayout(m_modpackDropZone);
-    dropLayout->setContentsMargins(12, 8, 12, 8);
+    dropLayout->setContentsMargins(12, 10, 12, 10);
     dropLayout->setSpacing(10);
+
+    m_dropIcon = new QLabel(m_modpackDropZone);
+    m_dropIcon->setFixedSize(26, 26);
+    m_dropIcon->setAlignment(Qt::AlignCenter);
+
     auto* dropText = new QVBoxLayout();
     dropText->setContentsMargins(0, 0, 0, 0);
     dropText->setSpacing(2);
-    auto* dropTitle = new QLabel(QStringLiteral("拖入整合包"), m_modpackDropZone);
+    auto* dropTitle = new QLabel(QStringLiteral("拖入整合包到合成槽"), m_modpackDropZone);
     dropTitle->setObjectName(QStringLiteral("ImportDropTitle"));
     auto* dropSub = new QLabel(QStringLiteral("支持 .zip / .mrpack，一次一个"), m_modpackDropZone);
     dropSub->setObjectName(QStringLiteral("ImportDropSub"));
     dropSub->setWordWrap(true);
     dropText->addWidget(dropTitle);
     dropText->addWidget(dropSub);
+
     m_modpackPick = new QPushButton(QStringLiteral("选择整合包…"), m_modpackDropZone);
     m_modpackPick->setObjectName(QStringLiteral("DialogAction"));
     m_modpackPick->setCursor(Qt::PointingHandCursor);
     m_modpackPick->setAutoDefault(false);
     m_modpackPick->setAccessibleName(QStringLiteral("选择整合包文件"));
+    dropLayout->addWidget(m_dropIcon, 0, Qt::AlignVCenter);
     dropLayout->addLayout(dropText, 1);
     dropLayout->addWidget(m_modpackPick, 0, Qt::AlignVCenter);
     modpackLayout->addWidget(m_modpackDropZone);
@@ -322,43 +374,46 @@ HomePage::HomePage(QWidget* parent)
     auto* instanceRow = new QHBoxLayout();
     instanceRow->setContentsMargins(0, 2, 0, 0);
     instanceRow->setSpacing(8);
-    auto* instanceLabel = new QLabel(QStringLiteral("当前实例"), m_modpackSection);
+    auto* instanceLabel = new QLabel(QStringLiteral("当前实例"), modpackCard);
     instanceLabel->setObjectName(QStringLiteral("DetailLabel"));
-    m_modpackInstance = new ComboBox(m_modpackSection);
+    m_modpackInstance = new ComboBox(modpackCard);
     m_modpackInstance->setObjectName(QStringLiteral("ModpackInstanceCombo"));
     m_modpackInstance->setAccessibleName(QStringLiteral("当前游戏实例"));
     instanceRow->addWidget(instanceLabel, 0, Qt::AlignVCenter);
     instanceRow->addWidget(m_modpackInstance, 1);
     modpackLayout->addLayout(instanceRow);
 
-    m_modpackPackName = new QLabel(m_modpackSection);
+    m_modpackPackName = new QLabel(modpackCard);
     m_modpackPackName->setObjectName(QStringLiteral("ModpackPackName"));
     m_modpackPackName->setTextFormat(Qt::PlainText);
     m_modpackPackName->setWordWrap(true);
     modpackLayout->addWidget(m_modpackPackName);
-    m_modpackPhase = new QLabel(m_modpackSection);
+
+    m_modpackPhase = new QLabel(modpackCard);
     m_modpackPhase->setObjectName(QStringLiteral("ModpackPhase"));
     modpackLayout->addWidget(m_modpackPhase);
 
-    m_modpackProgress = new QProgressBar(m_modpackSection);
+    m_modpackProgress = new XpProgressBar(modpackCard);
     m_modpackProgress->setObjectName(QStringLiteral("ImportProgress"));
     m_modpackProgress->setTextVisible(false);
     m_modpackProgress->setRange(0, 1000);
     m_modpackProgress->hide();
     modpackLayout->addWidget(m_modpackProgress);
-    m_modpackProgressText = new QLabel(m_modpackSection);
+
+    m_modpackProgressText = new QLabel(modpackCard);
     m_modpackProgressText->setObjectName(QStringLiteral("ModpackProgressText"));
     m_modpackProgressText->setWordWrap(true);
     m_modpackProgressText->hide();
     modpackLayout->addWidget(m_modpackProgressText);
 
-    m_modpackError = new QLabel(m_modpackSection);
+    m_modpackError = new QLabel(modpackCard);
     m_modpackError->setObjectName(QStringLiteral("ModpackError"));
     m_modpackError->setTextFormat(Qt::PlainText);
     m_modpackError->setWordWrap(true);
     m_modpackError->hide();
     modpackLayout->addWidget(m_modpackError);
-    m_modpackHint = new QLabel(m_modpackSection);
+
+    m_modpackHint = new QLabel(modpackCard);
     m_modpackHint->setObjectName(QStringLiteral("ModpackHint"));
     m_modpackHint->setTextFormat(Qt::PlainText);
     m_modpackHint->setWordWrap(true);
@@ -368,13 +423,13 @@ HomePage::HomePage(QWidget* parent)
     auto* importActions = new QHBoxLayout();
     importActions->setContentsMargins(0, 0, 0, 0);
     importActions->setSpacing(8);
-    m_modpackCancel = new QPushButton(QStringLiteral("取消导入"), m_modpackSection);
+    m_modpackCancel = new QPushButton(QStringLiteral("取消导入"), modpackCard);
     m_modpackCancel->setObjectName(QStringLiteral("CancelAction"));
     m_modpackCancel->setCursor(Qt::PointingHandCursor);
     m_modpackCancel->setAutoDefault(false);
     m_modpackCancel->setAccessibleName(QStringLiteral("取消导入"));
     m_modpackCancel->hide();
-    m_modpackRetry = new QPushButton(QStringLiteral("重试导入"), m_modpackSection);
+    m_modpackRetry = new QPushButton(QStringLiteral("重试导入"), modpackCard);
     m_modpackRetry->setObjectName(QStringLiteral("DialogAction"));
     m_modpackRetry->setCursor(Qt::PointingHandCursor);
     m_modpackRetry->setAutoDefault(false);
@@ -387,78 +442,76 @@ HomePage::HomePage(QWidget* parent)
 
     m_modpackNote = new QLabel(
         QStringLiteral("可选客户端内容默认随包安装；安装完成后请手动启动游戏。"),
-        m_modpackSection);
+        modpackCard);
     m_modpackNote->setObjectName(QStringLiteral("Footnote"));
     m_modpackNote->setWordWrap(true);
     modpackLayout->addWidget(m_modpackNote);
-    m_modpackSection->hide();
-    const int summaryIndex = leftLayout->indexOf(summaryTitle);
-    if (summaryIndex >= 0) {
-        leftLayout->insertWidget(summaryIndex, m_modpackSection);
-    } else {
-        leftLayout->addWidget(m_modpackSection);
-    }
 
-    m_footnote = new QLabel(m_left);
-    m_footnote->setObjectName(QStringLiteral("Footnote"));
-    m_footnote->setWordWrap(true);
-    leftLayout->addWidget(m_footnote);
+    m_modpackSection->hide();
+    leftLayout->addWidget(m_modpackSection);
     leftLayout->addStretch(1);
 
-#ifndef HUSTMCL_PUBLIC_RELEASE
-    m_divider = new QFrame(m_content);
-    m_divider->setObjectName(QStringLiteral("VDivider"));
-    m_divider->setFixedWidth(1);
-#endif
-
+    // RIGHT COLUMN: Launch Spec Summary Block + Quick Actions
     m_right = new QWidget(m_content);
-    m_right->setObjectName(QStringLiteral("ArtworkColumn"));
-    m_right->setMaximumWidth(226);
+    m_right->setObjectName(QStringLiteral("LaunchSpecColumn"));
+    m_right->setMaximumWidth(290);
     auto* rightLayout = new QVBoxLayout(m_right);
     m_rightLayout = rightLayout;
     rightLayout->setContentsMargins(0, 0, 0, 0);
-    rightLayout->setSpacing(8);
-    m_artwork = new CampusArtwork(m_right);
-    m_artwork->setObjectName(QStringLiteral("CampusArtwork"));
-#ifdef HUSTMCL_PUBLIC_RELEASE
-    m_artwork->setMottoTone(CampusArtwork::MottoTone::Paper);
-    m_artwork->setFixedSize(226, 208);
-    rightLayout->addWidget(m_artwork, 0, Qt::AlignHCenter);
-    rightLayout->addStretch(1);
-#else
-    m_artwork->setFixedSize(226, 280);
-    rightLayout->addWidget(m_artwork, 0, Qt::AlignHCenter);
-    m_artCaption = new QLabel(QStringLiteral("小科陪你，开启新世界。"), m_right);
-    m_artCaption->setObjectName(QStringLiteral("SidebarCaption"));
-    m_artCaption->setWordWrap(true);
-    m_artSub = new QLabel(QStringLiteral("树荫下的片刻，也是冒险的起点。"), m_right);
-    m_artSub->setObjectName(QStringLiteral("SidebarSub"));
-    m_artSub->setWordWrap(true);
-    rightLayout->addWidget(m_artCaption);
-    rightLayout->addWidget(m_artSub);
-    rightLayout->addSpacing(6);
-    m_settingsLink = new QPushButton(QStringLiteral("打开设置 →"), m_right);
-    m_settingsLink->setObjectName(QStringLiteral("SecondaryAction"));
+    rightLayout->setSpacing(12);
+
+    auto* summaryCard = new QFrame(m_right);
+    summaryCard->setObjectName(QStringLiteral("VoxelCard"));
+    auto* summaryLayout = new QVBoxLayout(summaryCard);
+    summaryLayout->setContentsMargins(14, 12, 14, 12);
+    summaryLayout->setSpacing(6);
+
+    auto* summaryTitle = new QLabel(QStringLiteral("启动摘要"), summaryCard);
+    summaryTitle->setObjectName(QStringLiteral("SectionTitle"));
+    summaryLayout->addWidget(summaryTitle);
+
+    m_memoryRow = new SummaryRow(summaryCard);
+    m_launchRow = new SummaryRow(summaryCard);
+    summaryLayout->addWidget(m_memoryRow);
+    summaryLayout->addWidget(m_launchRow);
+
+    auto* specDiv = new QFrame(summaryCard);
+    specDiv->setObjectName(QStringLiteral("Divider"));
+    specDiv->setFixedHeight(2);
+    summaryLayout->addSpacing(4);
+    summaryLayout->addWidget(specDiv);
+    summaryLayout->addSpacing(4);
+
+    m_footnote = new QLabel(summaryCard);
+    m_footnote->setObjectName(QStringLiteral("Footnote"));
+    m_footnote->setWordWrap(true);
+    summaryLayout->addWidget(m_footnote);
+
+    auto* quickRow = new QHBoxLayout();
+    quickRow->setContentsMargins(0, 6, 0, 0);
+    quickRow->setSpacing(8);
+    m_settingsLink = new QPushButton(QStringLiteral("打开设置"), summaryCard);
+    m_settingsLink->setObjectName(QStringLiteral("DialogAction"));
     m_settingsLink->setCursor(Qt::PointingHandCursor);
     m_settingsLink->setAutoDefault(false);
     m_settingsLink->setAccessibleName(QStringLiteral("打开设置"));
-    m_logsLink = new QPushButton(QStringLiteral("日志与错误 →"), m_right);
-    m_logsLink->setObjectName(QStringLiteral("SecondaryAction"));
+    m_logsLink = new QPushButton(QStringLiteral("日志与错误"), summaryCard);
+    m_logsLink->setObjectName(QStringLiteral("DialogAction"));
     m_logsLink->setCursor(Qt::PointingHandCursor);
     m_logsLink->setAutoDefault(false);
     m_logsLink->setAccessibleName(QStringLiteral("日志与错误"));
-    rightLayout->addWidget(m_settingsLink, 0, Qt::AlignLeft);
-    rightLayout->addWidget(m_logsLink, 0, Qt::AlignLeft);
-    rightLayout->addStretch(1);
-#endif
+    quickRow->addWidget(m_settingsLink, 1);
+    quickRow->addWidget(m_logsLink, 1);
+    summaryLayout->addLayout(quickRow);
 
-    m_columns->addWidget(m_left, 1);
-#ifndef HUSTMCL_PUBLIC_RELEASE
-    m_columns->addWidget(m_divider, 0);
-#endif
-    m_columns->addWidget(m_right, 0);
-    contentLayout->addLayout(m_columns);
+    rightLayout->addWidget(summaryCard);
+    rightLayout->addStretch(1);
+
+    m_columns->addWidget(m_left, 3);
+    m_columns->addWidget(m_right, 2);
+    contentLayout->addLayout(m_columns, 1);
     setContent(m_content);
+
     m_content->setAcceptDrops(true);
     m_content->installEventFilter(this);
     m_left->setAcceptDrops(true);
@@ -477,10 +530,8 @@ HomePage::HomePage(QWidget* parent)
             emit installRequested();
         }
     });
-#ifndef HUSTMCL_PUBLIC_RELEASE
     connect(m_settingsLink, &QPushButton::clicked, this, &HomePage::settingsRequested);
     connect(m_logsLink, &QPushButton::clicked, this, &HomePage::logsRequested);
-#endif
     connect(m_modpackPick, &QPushButton::clicked, this, &HomePage::chooseImportFile);
     connect(m_modpackInstance, &QComboBox::currentIndexChanged,
             this, [this](int index) {
@@ -531,8 +582,27 @@ HomePage::HomePage(QWidget* parent)
     });
 
     setAcceptDrops(true);
+    refreshTheme();
     setSnapshot({});
     updateResponsiveLayout();
+}
+
+void HomePage::refreshTheme(const QTime& localTime)
+{
+    if (m_artwork) {
+        m_artwork->syncSkyPhaseToTime(localTime);
+        m_artwork->update();
+        if (m_skyBadge) {
+            m_skyBadge->setText(theme::skyPhaseLabel(m_artwork->skyPhase()));
+        }
+    }
+    if (m_dropIcon) {
+        const qreal dpr = qMax<qreal>(1.0, devicePixelRatioF());
+        m_dropIcon->setPixmap(voxel::renderIcon(voxel::IconKind::ModpackCrate, 24, dpr));
+    }
+    if (m_modpackProgress) {
+        m_modpackProgress->update();
+    }
 }
 
 void HomePage::setSnapshot(const application::HomeSnapshot& snapshot)
@@ -1141,10 +1211,23 @@ void HomePage::setDecorationsVisible(bool visible)
     PageScaffold::setDecorationsVisible(visible);
     m_decorationsVisible = visible;
     m_artwork->setVisible(visible);
-#ifndef HUSTMCL_PUBLIC_RELEASE
-    m_artCaption->setVisible(visible);
-    m_artSub->setVisible(visible);
-#endif
+    m_artwork->setDecorationVisible(visible);
+    m_landmarkBadge->setVisible(visible);
+    m_skyBadge->setVisible(visible);
+    if (!visible) {
+        m_heroFrame->setObjectName(QStringLiteral("VoxelCard"));
+        m_instanceName->setStyleSheet(QString());
+        m_instanceMeta->setStyleSheet(QString());
+    } else {
+        m_heroFrame->setObjectName(QStringLiteral("HeroBannerFrame"));
+        m_instanceName->setStyleSheet(
+            QStringLiteral("QLabel { color: #FFFFFF; background: transparent; font-size: 21px; font-weight: 700; }"));
+        m_instanceMeta->setStyleSheet(
+            QStringLiteral("QLabel { color: #DCEBE2; background: rgba(8, 18, 14, 165);"
+                           " border: 1px solid rgba(110, 180, 140, 110); padding: 2px 8px; font-size: 11.5px; }"));
+    }
+    m_heroFrame->style()->unpolish(m_heroFrame);
+    m_heroFrame->style()->polish(m_heroFrame);
     updateResponsiveLayout();
 }
 
@@ -1184,53 +1267,23 @@ void HomePage::resizeEvent(QResizeEvent* event)
 
 void HomePage::updateResponsiveLayout()
 {
-    if (!m_columns || !m_leftLayout || !m_rightLayout) {
+    if (!m_columns || !m_heroFrame) {
         return;
     }
-    const bool vertical = width() < 820;
-#ifdef HUSTMCL_PUBLIC_RELEASE
+    const bool vertical = width() < 760;
     if (vertical) {
         m_columns->setDirection(QBoxLayout::TopToBottom);
-        m_columns->setSpacing(0);
+        m_columns->setSpacing(12);
         m_right->setMaximumWidth(QWIDGETSIZE_MAX);
-        if (m_leftLayout->indexOf(m_artwork) != 0) {
-            m_leftLayout->insertWidget(0, m_artwork);
-        }
-        m_right->hide();
-        m_artwork->setMinimumWidth(0);
-        m_artwork->setMaximumWidth(QWIDGETSIZE_MAX);
-        m_artwork->setContentsMargins(0, 0, 0, 8);
-        m_artwork->setFixedHeight(62);
-        m_artwork->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        m_artwork->setVisible(m_decorationsVisible);
+        m_heroFrame->setMinimumHeight(m_decorationsVisible ? 112 : 76);
+        m_heroFrame->setMaximumHeight(m_decorationsVisible ? 124 : 88);
     } else {
         m_columns->setDirection(QBoxLayout::LeftToRight);
-        m_columns->setSpacing(24);
-        if (m_rightLayout->indexOf(m_artwork) != 0) {
-            m_rightLayout->insertWidget(0, m_artwork);
-        }
-        m_artwork->setContentsMargins(0, 0, 0, 0);
-        m_artwork->setFixedSize(226, 208);
-        m_artwork->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        m_right->setMaximumWidth(226);
-        m_right->setVisible(m_decorationsVisible);
-        m_artwork->setVisible(m_decorationsVisible);
+        m_columns->setSpacing(14);
+        m_right->setMaximumWidth(290);
+        m_heroFrame->setMinimumHeight(m_decorationsVisible ? 138 : 82);
+        m_heroFrame->setMaximumHeight(m_decorationsVisible ? 156 : 96);
     }
-#else
-    if (vertical) {
-        m_columns->setDirection(QBoxLayout::TopToBottom);
-        m_columns->setSpacing(20);
-        m_divider->hide();
-        m_right->setMaximumWidth(QWIDGETSIZE_MAX);
-        m_artwork->setFixedSize(226, 280);
-    } else {
-        m_columns->setDirection(QBoxLayout::LeftToRight);
-        m_columns->setSpacing(24);
-        m_divider->show();
-        m_right->setMaximumWidth(226);
-        m_artwork->setFixedSize(226, 280);
-    }
-#endif
 }
 
 QString HomePage::actionTitle(const application::HomeSnapshot& snapshot) const

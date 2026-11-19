@@ -5,53 +5,85 @@
 #include "copy.h"
 #include "hustmcl/application/content_market.h"
 #include "hustmcl/application/frontend_gateway.h"
+#include "hustmcl/application/launcher_settings.h"
 #include "hustmcl/application/modpack_import.h"
 #include "home_page.h"
 #include "install_page.h"
 #include "logs_page.h"
+#include "pixel_title_bar.h"
 #include "settings_page.h"
 #include "sidebar.h"
 
+#include <QApplication>
 #include <QCloseEvent>
 #include <QDesktopServices>
 #include <QDir>
+#include <QEvent>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QHBoxLayout>
+#include <QHoverEvent>
 #include <QMessageBox>
+#include <QMouseEvent>
 #include <QResizeEvent>
 #include <QScreen>
+#include <QSettings>
 #include <QShowEvent>
 #include <QStackedWidget>
 #include <QTimer>
 #include <QUrl>
+#include <QVBoxLayout>
 #include <QWidget>
+#include <QWindow>
 
 namespace hustmcl::app {
+
+namespace {
+constexpr int kResizeMargin = 6;
+}
 
 MainWindow::MainWindow(application::FrontendGateway* gateway, Mode mode, QWidget* parent)
     : QMainWindow(parent)
     , m_gateway(gateway)
     , m_mode(mode)
 {
-    setWindowTitle(m_mode == Mode::Real ? QStringLiteral("HustMCL")
-                                        : QStringLiteral("HustMCL 界面演示"));
+    setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::WindowSystemMenuHint
+                   | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint
+                   | Qt::WindowCloseButtonHint);
+    const QString title = m_mode == Mode::Real ? QStringLiteral("HustMCL")
+                                               : QStringLiteral("HustMCL 界面演示");
+    setWindowTitle(title);
     setAttribute(Qt::WA_DeleteOnClose, false);
     setMinimumSize(840, 460);
     resize(1120, 720);
 
-    auto* root = new QWidget(this);
-    root->setObjectName(QStringLiteral("Root"));
-    auto* layout = new QHBoxLayout(root);
+    m_root = new QWidget(this);
+    m_root->setObjectName(QStringLiteral("Root"));
+    m_root->setAttribute(Qt::WA_Hover, true);
+    m_root->installEventFilter(this);
+
+    auto* outerLayout = new QVBoxLayout(m_root);
+    outerLayout->setContentsMargins(2, 2, 2, 2);
+    outerLayout->setSpacing(0);
+
+    m_titleBar = new ui::PixelTitleBar(m_root);
+    m_titleBar->setTitleText(
+        title,
+        m_mode == Mode::Real ? QStringLiteral("华中科技大学 Minecraft 启动器")
+                             : QStringLiteral("华中科技大学 · 界面演示"));
+    outerLayout->addWidget(m_titleBar, 0);
+
+    auto* body = new QWidget(m_root);
+    auto* layout = new QHBoxLayout(body);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
-    m_sidebar = new ui::Sidebar(root);
-    m_sidebar->setFixedWidth(216);
+    m_sidebar = new ui::Sidebar(body);
+    m_sidebar->setFixedWidth(220);
     m_sidebar->setRealMode(m_mode == Mode::Real);
     layout->addWidget(m_sidebar, 0);
 
-    m_stack = new QStackedWidget(root);
+    m_stack = new QStackedWidget(body);
     m_home = new ui::HomePage(m_stack);
     if (m_mode == Mode::Real) {
         m_checks = new ui::ChecksPage(m_stack);
@@ -68,7 +100,29 @@ MainWindow::MainWindow(application::FrontendGateway* gateway, Mode mode, QWidget
     m_stack->addWidget(m_logs);
     m_stack->addWidget(m_market);
     layout->addWidget(m_stack, 1);
-    setCentralWidget(root);
+    outerLayout->addWidget(body, 1);
+    setCentralWidget(m_root);
+
+    // Theme mode persistence (UI-only QSettings) + zero-polling boundary timer
+    m_themeTimer = new QTimer(this);
+    m_themeTimer->setSingleShot(true);
+    connect(m_themeTimer, &QTimer::timeout, this, [this]() {
+        applyResolvedTheme(QTime::currentTime());
+    });
+
+    connect(m_titleBar, &ui::PixelTitleBar::themeCycleRequested,
+            this, &MainWindow::cycleThemeMode);
+    connect(m_titleBar, &ui::PixelTitleBar::minimizeRequested,
+            this, &QWidget::showMinimized);
+    connect(m_titleBar, &ui::PixelTitleBar::maximizeToggleRequested, this, [this]() {
+        if (isMaximized()) {
+            showNormal();
+        } else {
+            showMaximized();
+        }
+    });
+    connect(m_titleBar, &ui::PixelTitleBar::closeRequested,
+            this, &QWidget::close);
 
     connect(m_sidebar, &ui::Sidebar::pageActivated, this, [this](int index) {
         if (index == 1) {
@@ -182,27 +236,68 @@ MainWindow::MainWindow(application::FrontendGateway* gateway, Mode mode, QWidget
             m_gateway->requestRetry(taskId);
         });
     }
-    connect(m_settings, &ui::SettingsPage::saveNameRequested,
-            this, [this](const QString& name) {
+    connect(m_settings, &ui::SettingsPage::themeModeRequested,
+            this, [this](ui::theme::ThemeMode mode) {
+        setThemeMode(mode, QTime::currentTime(), true);
+    });
+    connect(m_settings, &ui::SettingsPage::saveSettingsRequested,
+            this, [this](const QString& name, int memoryMb) {
         if (!m_homeSnapshot.offlineMode) {
             return;
         }
         if (m_homeSnapshot.sessionActive) {
             m_settings->setSaveResult(
                 false, QStringLiteral("游戏运行中不能修改离线身份，请先退出游戏。"));
+            m_settings->setMemorySaveResult(
+                false, QStringLiteral("游戏运行中不能修改内存上限，请先退出游戏。"));
             return;
         }
-        const bool accepted = m_gateway->setPlayerName(name);
-        if (accepted) {
+        const bool nameAccepted = m_gateway->setPlayerName(name);
+        if (nameAccepted) {
             m_settings->setSaveResult(
                 true,
-                QStringLiteral("离线名已应用。"));
-            refreshFromGateway();
+                QStringLiteral("离线名已应用，下次启动游戏时生效。"));
         } else {
             m_settings->setSaveResult(
                 false,
                 QStringLiteral("离线名无效：仅支持 1–16 位英文字母、数字或下划线，"
                                "不能使用中文或空格。若格式正确，请检查数据目录写入权限。"));
+        }
+        const bool memAccepted = m_gateway->setMemoryMb(memoryMb);
+        if (memAccepted) {
+            m_settings->setMemorySaveResult(
+                true,
+                QStringLiteral("内存上限已保存（%1 MB），下次启动游戏时生效。").arg(memoryMb));
+        } else {
+            m_settings->setMemorySaveResult(
+                false,
+                QStringLiteral("内存需在 %1–%2 MB 之间；若范围正确请检查数据目录写入权限。")
+                    .arg(application::kMinMemoryMb)
+                    .arg(application::kMaxMemoryMb));
+        }
+        if (nameAccepted || memAccepted) {
+            refreshFromGateway();
+        }
+    });
+    connect(m_settings, &ui::SettingsPage::saveMemoryRequested,
+            this, [this](int memoryMb) {
+        if (m_homeSnapshot.sessionActive) {
+            m_settings->setMemorySaveResult(
+                false, QStringLiteral("游戏运行中不能修改内存上限，请先退出游戏。"));
+            return;
+        }
+        const bool accepted = m_gateway->setMemoryMb(memoryMb);
+        if (accepted) {
+            m_settings->setMemorySaveResult(
+                true,
+                QStringLiteral("内存上限已保存（%1 MB），下次启动游戏时生效。").arg(memoryMb));
+            refreshFromGateway();
+        } else {
+            m_settings->setMemorySaveResult(
+                false,
+                QStringLiteral("内存需在 %1–%2 MB 之间；若范围正确请检查数据目录写入权限。")
+                    .arg(application::kMinMemoryMb)
+                    .arg(application::kMaxMemoryMb));
         }
     });
     connect(m_settings, &ui::SettingsPage::offlineModeRequested, this, [this](bool offline) {
@@ -267,6 +362,11 @@ MainWindow::MainWindow(application::FrontendGateway* gateway, Mode mode, QWidget
             this, &MainWindow::applyHomeSnapshot);
     connect(m_gateway, &application::FrontendGateway::installChanged,
             this, &MainWindow::applyInstallSnapshot);
+
+    const QSettings uiPrefs(QStringLiteral("HustMCL"), QStringLiteral("HustMCL"));
+    const ui::theme::ThemeMode initialMode = ui::theme::themeModeFromKey(
+        uiPrefs.value(QStringLiteral("ui/themeMode"), QStringLiteral("auto")).toString());
+    setThemeMode(initialMode, QTime::currentTime(), false);
 
     refreshFromGateway();
     setCurrentPage(Page::Home);
@@ -392,6 +492,72 @@ void MainWindow::setModpackController(application::ModpackController* controller
     m_home->setModpackSnapshot(controller->snapshot());
 }
 
+ui::theme::ThemeMode MainWindow::themeMode() const
+{
+    return m_themeMode;
+}
+
+ui::theme::ResolvedTheme MainWindow::resolvedTheme() const
+{
+    return m_resolvedTheme;
+}
+
+void MainWindow::setThemeMode(ui::theme::ThemeMode mode, const QTime& localTime, bool persist)
+{
+    m_themeMode = mode;
+    if (persist) {
+        QSettings uiPrefs(QStringLiteral("HustMCL"), QStringLiteral("HustMCL"));
+        uiPrefs.setValue(QStringLiteral("ui/themeMode"), ui::theme::themeModeKey(mode));
+    }
+    applyResolvedTheme(localTime);
+}
+
+void MainWindow::cycleThemeMode()
+{
+    using ui::theme::ThemeMode;
+    ThemeMode next = ThemeMode::AutoByTime;
+    if (m_themeMode == ThemeMode::AutoByTime) {
+        next = ThemeMode::Dark;
+    } else if (m_themeMode == ThemeMode::Dark) {
+        next = ThemeMode::Light;
+    } else {
+        next = ThemeMode::AutoByTime;
+    }
+    setThemeMode(next, QTime::currentTime(), true);
+}
+
+void MainWindow::applyResolvedTheme(const QTime& localTime)
+{
+    const ui::theme::ResolvedTheme resolved = ui::theme::resolveTheme(m_themeMode, localTime);
+    m_resolvedTheme = resolved;
+    ui::theme::setActiveTheme(resolved);
+    if (qApp) {
+        qApp->setStyleSheet(ui::theme::styleSheet(resolved));
+    }
+    if (m_titleBar) {
+        m_titleBar->setThemeState(m_themeMode, resolved);
+    }
+    if (m_sidebar) {
+        m_sidebar->refreshTheme();
+    }
+    if (m_home) {
+        m_home->refreshTheme(localTime);
+    }
+    if (m_settings) {
+        m_settings->setThemeState(m_themeMode, resolved);
+    }
+    scheduleThemeBoundaryCheck(localTime);
+}
+
+void MainWindow::scheduleThemeBoundaryCheck(const QTime& localTime)
+{
+    if (!m_themeTimer) {
+        return;
+    }
+    // Single-shot timer fires only on day/night & sky-phase boundary transitions.
+    m_themeTimer->start(ui::theme::msecsUntilNextBoundary(localTime));
+}
+
 void MainWindow::resizeEvent(QResizeEvent* event)
 {
     QMainWindow::resizeEvent(event);
@@ -418,6 +584,66 @@ void MainWindow::closeEvent(QCloseEvent* event)
     if (m_mode == Mode::Real) {
         emit quitRequested();
     }
+}
+
+void MainWindow::changeEvent(QEvent* event)
+{
+    QMainWindow::changeEvent(event);
+    if (event->type() == QEvent::WindowStateChange && m_titleBar) {
+        m_titleBar->setMaximized(isMaximized());
+    }
+}
+
+Qt::Edges MainWindow::resizeEdgesForPos(const QPoint& pos) const
+{
+    if (isMaximized() || !m_root) {
+        return {};
+    }
+    Qt::Edges edges;
+    if (pos.x() <= kResizeMargin) {
+        edges |= Qt::LeftEdge;
+    } else if (pos.x() >= m_root->width() - kResizeMargin) {
+        edges |= Qt::RightEdge;
+    }
+    if (pos.y() <= kResizeMargin) {
+        edges |= Qt::TopEdge;
+    } else if (pos.y() >= m_root->height() - kResizeMargin) {
+        edges |= Qt::BottomEdge;
+    }
+    return edges;
+}
+
+bool MainWindow::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched == m_root) {
+        if (event->type() == QEvent::HoverMove) {
+            const auto* hover = static_cast<QHoverEvent*>(event);
+            const Qt::Edges edges = resizeEdgesForPos(hover->position().toPoint());
+            if ((edges == (Qt::LeftEdge | Qt::TopEdge))
+                || (edges == (Qt::RightEdge | Qt::BottomEdge))) {
+                m_root->setCursor(Qt::SizeFDiagCursor);
+            } else if ((edges == (Qt::RightEdge | Qt::TopEdge))
+                       || (edges == (Qt::LeftEdge | Qt::BottomEdge))) {
+                m_root->setCursor(Qt::SizeBDiagCursor);
+            } else if (edges & (Qt::LeftEdge | Qt::RightEdge)) {
+                m_root->setCursor(Qt::SizeHorCursor);
+            } else if (edges & (Qt::TopEdge | Qt::BottomEdge)) {
+                m_root->setCursor(Qt::SizeVerCursor);
+            } else {
+                m_root->unsetCursor();
+            }
+        } else if (event->type() == QEvent::MouseButtonPress) {
+            const auto* mouse = static_cast<QMouseEvent*>(event);
+            if (mouse->button() == Qt::LeftButton) {
+                const Qt::Edges edges = resizeEdgesForPos(mouse->position().toPoint());
+                if (edges != Qt::Edges() && windowHandle()
+                    && windowHandle()->startSystemResize(edges)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return QMainWindow::eventFilter(watched, event);
 }
 
 ui::HomePage* MainWindow::homePage() const
@@ -455,6 +681,11 @@ ui::Sidebar* MainWindow::sidebar() const
     return m_sidebar;
 }
 
+ui::PixelTitleBar* MainWindow::titleBar() const
+{
+    return m_titleBar;
+}
+
 void MainWindow::fitToScreen()
 {
     QScreen* screen = QGuiApplication::primaryScreen();
@@ -472,11 +703,14 @@ void MainWindow::updateSidebarForSize()
     if (!m_sidebar) {
         return;
     }
-    const int sidebarWidth = width() < 960 ? 200 : 216;
+    const int sidebarWidth = width() < 960 ? 204 : 220;
     if (m_sidebar->width() != sidebarWidth) {
         m_sidebar->setFixedWidth(sidebarWidth);
     }
     m_sidebar->setCompact(height() < 680);
+    if (m_titleBar) {
+        m_titleBar->setCompact(width() < 940);
+    }
 }
 
 void MainWindow::showDemoMessage(const QString& action)

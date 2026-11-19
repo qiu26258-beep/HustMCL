@@ -13,8 +13,8 @@ PageScaffold::PageScaffold(QWidget* parent)
     : QWidget(parent)
 {
     auto* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(32, 20, 32, 20);
-    layout->setSpacing(12);
+    layout->setContentsMargins(20, 14, 20, 16);
+    layout->setSpacing(10);
 
     m_header = new PageHeader(this);
     layout->addWidget(m_header, 0);

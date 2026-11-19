@@ -1,87 +1,124 @@
 #pragma once
 
+#include <QColor>
 #include <QFont>
 #include <QString>
+#include <QTime>
 
 namespace hustmcl::ui::theme {
 
-// Single source for every colour in the UI. Palette follows the product icon
-// (resources/brand/hustmcl.png): deep forest green, ivory, grass green, with
-// brick red kept for cancel/danger. QSS refers to these by token name
-// (see kTokens in theme.cpp); painted widgets use the constants directly.
-//
-// Contrast (WCAG, computed): ink/page 12.8, muted/page 4.8, muted/surface 5.5,
-// onPrimary/primary 5.8, railStrong/rail 10.4, railText/rail 6.7, gold/rail 7.5.
+// User-selectable theme preference. AutoByTime switches cleanly between
+// Birch & Sandstone (Light, 06:00-17:59) and Deepslate Forest (Dark, 18:00-05:59).
+enum class ThemeMode {
+    AutoByTime,
+    Dark,
+    Light,
+};
 
-// Paper
-inline constexpr const char* kPage = "#F2EDDF";
-inline constexpr const char* kSurface = "#FFFDF8";
-inline constexpr const char* kSunken = "#F5F1E4";
-inline constexpr const char* kInk = "#1B2A24";
-inline constexpr const char* kInkSoft = "#3F4F45";
-inline constexpr const char* kInkHover = "#2C3D34";
-inline constexpr const char* kMuted = "#5E6B62";
-inline constexpr const char* kLine = "#DDD8C6";
-inline constexpr const char* kLineSubtle = "#EEEADB";
-inline constexpr const char* kLineFaint = "#E9E6D8";
-inline constexpr const char* kStageLine = "#E3DFCB";
-inline constexpr const char* kLinkLine = "#CFCBB8";
+enum class ResolvedTheme {
+    Dark,
+    Light,
+};
 
-// Grass green: the main action and "done" states
-inline constexpr const char* kPrimary = "#2A7339";
-inline constexpr const char* kPrimaryHover = "#2F8040";
-inline constexpr const char* kPrimaryDeep = "#1B4D27";
-inline constexpr const char* kPrimarySoft = "#E3EEDC";
-inline constexpr const char* kPrimaryTint = "#F1F6EC";
-inline constexpr const char* kOk = "#25683A";
-inline constexpr const char* kOkSoft = "#E3EEDC";
-inline constexpr const char* kMoss = "#3F6B4A";
-inline constexpr const char* kCaption = "#2F5E4A";
-inline constexpr const char* kDropBg = "#F4F8EE";
-inline constexpr const char* kDropLine = "#B9CDB0";
-inline constexpr const char* kUnknownText = "#4A5A4E";
+enum class SkyPhase {
+    Dawn,   // 06:00 - 08:59 晨雾
+    Day,    // 09:00 - 16:59 晴昼
+    Sunset, // 17:00 - 19:29 晚霞
+    Night,  // 19:30 - 05:59 星夜
+};
 
-// Status
-inline constexpr const char* kWarn = "#8A5A00";
-inline constexpr const char* kWarnSoft = "#FBF1DC";
-inline constexpr const char* kWarnLine = "#E7D3A8";
-inline constexpr const char* kError = "#B3261E";
-inline constexpr const char* kErrorSoft = "#FBEAE9";
-inline constexpr const char* kErrorLine = "#E3B4B0";
-inline constexpr const char* kCancel = "#9E3A30";
-inline constexpr const char* kCancelLine = "#D7A9A3";
-inline constexpr const char* kCancelTint = "#FBF1EF";
-inline constexpr const char* kFocus = "#1D5FA7";
-inline constexpr const char* kDisabledText = "#7A838D";
-inline constexpr const char* kDisabledBg = "#E6E9E1";
-inline constexpr const char* kOnPrimary = "#FFFFFF";
+struct Palette {
+    // Window & Panels (Deepslate Forest / Birch & Sandstone)
+    const char* page;
+    const char* surface;
+    const char* surfaceAlt;
+    const char* sunken;
+    const char* ink;
+    const char* inkSoft;
+    const char* muted;
+    const char* border;
+    const char* bevelHi;
+    const char* bevelLo;
+    const char* lineSubtle;
 
-// Gold: recommendation and the focus/selection accent on the dark rail
-inline constexpr const char* kGold = "#F2C86B";
-inline constexpr const char* kGoldSoft = "#F8EBC4";
-inline constexpr const char* kGoldText = "#6B4A00";
+    // Pixel Titlebar
+    const char* titleBar;
+    const char* titleBarBorder;
+    const char* titleText;
+    const char* titleMuted;
+    const char* titleBtnHover;
 
-// HUST motto panel: warm paper / deep forest pair with restrained hairlines.
-inline constexpr const char* kMottoPaper = "#F4EDDF";
-inline constexpr const char* kMottoInk = "#153D2F";
-inline constexpr const char* kMottoPaperLine = "#D8CFBD";
-inline constexpr const char* kMottoPaperMuted = "#6C7A6C";
-inline constexpr const char* kMottoForest = "#0B3328";
-inline constexpr const char* kMottoCream = "#F6EFDF";
-inline constexpr const char* kMottoForestLine = "#33604E";
-inline constexpr const char* kMottoForestMuted = "#B6CBBE";
+    // Forest Hotbar Sidebar Rail
+    const char* rail;
+    const char* railBorder;
+    const char* railHover;
+    const char* railSelected;
+    const char* railStrong;
+    const char* railText;
+    const char* railMuted;
+    const char* railFoot;
+    const char* railOff;
 
-// Forest rail
-inline constexpr const char* kRail = "#0F3F32";
-inline constexpr const char* kRailHover = "#17493B";
-inline constexpr const char* kRailSelected = "#1F5A47";
-inline constexpr const char* kRailStrong = "#F7F0DF";
-inline constexpr const char* kRailText = "#B7C7B8";
-inline constexpr const char* kRailMuted = "#A9BFAE";
-inline constexpr const char* kRailFoot = "#93AD9E";
-inline constexpr const char* kRailOff = "#6F8B7D";
+    // Emerald Grass Primary CTA & Ready States
+    const char* primary;
+    const char* primaryHover;
+    const char* primaryHi;
+    const char* primaryLo;
+    const char* primaryDeep;
+    const char* primarySoft;
+    const char* okText;
+    const char* onPrimary;
 
+    // HUST South Gate Crimson (Danger / Cancel / Brand Accent)
+    const char* crimson;
+    const char* crimsonHover;
+    const char* crimsonHi;
+    const char* crimsonLo;
+    const char* crimsonSoft;
+    const char* crimsonLine;
+
+    // Sycamore Gold (Recommended / Warning / Enchant Focus)
+    const char* gold;
+    const char* goldSoft;
+    const char* goldLine;
+    const char* goldText;
+
+    // Lapis Blue (Market / Info / Focus)
+    const char* focus;
+    const char* lapis;
+    const char* lapisSoft;
+
+    // Disabled
+    const char* disabledBg;
+    const char* disabledText;
+    const char* disabledBorder;
+
+    // Dropzone & XP Bar
+    const char* dropBg;
+    const char* dropLine;
+    const char* xpTrack;
+    const char* xpBorder;
+};
+
+ResolvedTheme resolveTheme(ThemeMode mode, const QTime& localTime = QTime::currentTime());
+SkyPhase resolveSkyPhase(const QTime& localTime = QTime::currentTime());
+int msecsUntilNextBoundary(const QTime& localTime = QTime::currentTime());
+
+QString themeModeKey(ThemeMode mode);
+ThemeMode themeModeFromKey(const QString& key);
+QString themeModeLabel(ThemeMode mode);
+QString resolvedThemeLabel(ResolvedTheme theme);
+QString skyPhaseLabel(SkyPhase phase);
+
+const Palette& palette(ResolvedTheme theme);
+const Palette& currentPalette();
+ResolvedTheme activeTheme();
+void setActiveTheme(ResolvedTheme theme);
+
+QColor color(const char* hex);
 QFont baseFont();
+QFont monoFont(qreal pointSize = 9.5);
+QString styleSheet(ResolvedTheme theme);
 QString styleSheet();
 
 } // namespace hustmcl::ui::theme

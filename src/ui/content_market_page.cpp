@@ -126,10 +126,11 @@ ContentMarketPage::ContentMarketPage(application::ContentController* controller,
     m_body->setContentsMargins(0, 0, 0, 0);
     m_body->setSpacing(20);
 
-    m_resultsPane = new QWidget(m_content);
-    m_resultsPane->setMaximumWidth(330);
+    m_resultsPane = new QFrame(m_content);
+    m_resultsPane->setObjectName(QStringLiteral("VoxelCard"));
+    m_resultsPane->setMaximumWidth(340);
     auto* resultsLayout = new QVBoxLayout(m_resultsPane);
-    resultsLayout->setContentsMargins(0, 0, 0, 0);
+    resultsLayout->setContentsMargins(14, 12, 14, 12);
     resultsLayout->setSpacing(6);
     auto* resultsTitle = new QLabel(QStringLiteral("搜索结果"), m_resultsPane);
     resultsTitle->setObjectName(QStringLiteral("SectionTitle"));
@@ -167,9 +168,10 @@ ContentMarketPage::ContentMarketPage(application::ContentController* controller,
     m_bodyDivider->setObjectName(QStringLiteral("VDivider"));
     m_bodyDivider->setFixedWidth(1);
 
-    m_detailPane = new QWidget(m_content);
+    m_detailPane = new QFrame(m_content);
+    m_detailPane->setObjectName(QStringLiteral("VoxelCard"));
     auto* detailLayout = new QVBoxLayout(m_detailPane);
-    detailLayout->setContentsMargins(0, 0, 0, 0);
+    detailLayout->setContentsMargins(16, 14, 16, 14);
     detailLayout->setSpacing(5);
     m_projectTitle = new QLabel(m_detailPane);
     m_projectTitle->setObjectName(QStringLiteral("MarketProjectTitle"));

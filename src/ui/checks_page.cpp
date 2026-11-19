@@ -31,9 +31,10 @@ ChecksPage::ChecksPage(QWidget* parent)
     m_columns->setContentsMargins(0, 0, 0, 0);
     m_columns->setSpacing(24);
 
-    m_left = new QWidget(m_content);
+    m_left = new QFrame(m_content);
+    m_left->setObjectName(QStringLiteral("VoxelCard"));
     auto* leftLayout = new QVBoxLayout(m_left);
-    leftLayout->setContentsMargins(0, 0, 0, 0);
+    leftLayout->setContentsMargins(16, 14, 16, 14);
     leftLayout->setSpacing(0);
 
     auto* readinessTitle = new QLabel(QStringLiteral("启动前检查"), m_left);
@@ -88,10 +89,11 @@ ChecksPage::ChecksPage(QWidget* parent)
     m_divider->setObjectName(QStringLiteral("VDivider"));
     m_divider->setFixedWidth(1);
 
-    m_right = new QWidget(m_content);
-    m_right->setMaximumWidth(250);
+    m_right = new QFrame(m_content);
+    m_right->setObjectName(QStringLiteral("VoxelCard"));
+    m_right->setMaximumWidth(270);
     auto* rightLayout = new QVBoxLayout(m_right);
-    rightLayout->setContentsMargins(0, 0, 0, 0);
+    rightLayout->setContentsMargins(16, 14, 16, 14);
     rightLayout->setSpacing(0);
     auto* detailTitle = new QLabel(QStringLiteral("本次启动"), m_right);
     detailTitle->setObjectName(QStringLiteral("DetailLabel"));

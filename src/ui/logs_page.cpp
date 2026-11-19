@@ -21,9 +21,16 @@ LogsPage::LogsPage(QWidget* parent)
                          QString());
 
     auto* content = new QWidget;
-    auto* layout = new QVBoxLayout(content);
-    layout->setContentsMargins(24, 24, 24, 24);
+    auto* outerLayout = new QVBoxLayout(content);
+    outerLayout->setContentsMargins(18, 16, 18, 16);
+    outerLayout->setSpacing(12);
+
+    auto* card = new QFrame(content);
+    card->setObjectName(QStringLiteral("VoxelCard"));
+    auto* layout = new QVBoxLayout(card);
+    layout->setContentsMargins(16, 14, 16, 14);
     layout->setSpacing(0);
+    outerLayout->addWidget(card, 1);
 
     auto* statusLabel = new QLabel(QStringLiteral("当前状态"), content);
     statusLabel->setObjectName(QStringLiteral("SectionTitle"));

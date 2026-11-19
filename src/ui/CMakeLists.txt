@@ -20,14 +20,14 @@ add_library(hustmcl_ui STATIC
     install_page.h
     install_stages.cpp
     install_stages.h
-    leaf_motif.cpp
-    leaf_motif.h
     logs_page.cpp
     logs_page.h
     page_header.cpp
     page_header.h
     page_scaffold.cpp
     page_scaffold.h
+    pixel_title_bar.cpp
+    pixel_title_bar.h
     primary_action_bar.cpp
     primary_action_bar.h
     settings_page.cpp
@@ -44,13 +44,12 @@ add_library(hustmcl_ui STATIC
     summary_row.h
     theme.cpp
     theme.h
+    voxel_icons.cpp
+    voxel_icons.h
+    xp_progress_bar.cpp
+    xp_progress_bar.h
 )
 if(HUSTMCL_PUBLIC_RELEASE)
-    configure_file(
-        ${PROJECT_SOURCE_DIR}/resources/public/public-campus.svg
-        ${CMAKE_CURRENT_BINARY_DIR}/public-campus.svg
-        COPYONLY
-    )
     configure_file(
         ${PROJECT_SOURCE_DIR}/resources/brand/hustmcl-128.png
         ${CMAKE_CURRENT_BINARY_DIR}/hustmcl-128.png

@@ -3,13 +3,13 @@
 #include "campus_artwork.h"
 #include "copy.h"
 #include "theme.h"
+#include "voxel_icons.h"
 
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidget>
 #include <QListWidgetItem>
-#include <QPixmap>
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QStyle>
@@ -31,53 +31,49 @@ Sidebar::Sidebar(QWidget* parent)
 {
     setObjectName(QStringLiteral("Sidebar"));
     setAttribute(Qt::WA_StyledBackground, true);
-    setMinimumWidth(200);
-    setMaximumWidth(216);
+    setMinimumWidth(204);
+    setMaximumWidth(224);
 
     auto* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(16, 12, 16, 12);
-    layout->setSpacing(6);
+    layout->setContentsMargins(12, 12, 12, 12);
+    layout->setSpacing(8);
 
-    auto* brandRow = new QHBoxLayout();
-    brandRow->setContentsMargins(0, 0, 0, 0);
-    brandRow->setSpacing(10);
-    auto* mark = new QLabel(QStringLiteral("H"), this);
-    mark->setObjectName(QStringLiteral("BrandMark"));
-    mark->setAlignment(Qt::AlignCenter);
-    {
-        // The product icon doubles as the brand mark; "H" stays as the fallback.
-        QPixmap icon(QStringLiteral(":/brand/hustmcl-128.png"));
-        if (!icon.isNull()) {
-            const qreal ratio = mark->devicePixelRatioF();
-            icon = icon.scaled(QSize(38, 38) * ratio, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-            icon.setDevicePixelRatio(ratio);
-            mark->setPixmap(icon);
-        }
-    }
+    // Hardcore Voxel Brand Block
+    auto* brandBlock = new QFrame(this);
+    brandBlock->setObjectName(QStringLiteral("BrandBlock"));
+    auto* brandRow = new QHBoxLayout(brandBlock);
+    brandRow->setContentsMargins(8, 7, 8, 7);
+    brandRow->setSpacing(9);
+
+    m_brandMark = new QLabel(this);
+    m_brandMark->setObjectName(QStringLiteral("BrandMark"));
+    m_brandMark->setAlignment(Qt::AlignCenter);
+
     auto* brandText = new QVBoxLayout();
     brandText->setContentsMargins(0, 0, 0, 0);
     brandText->setSpacing(1);
-    auto* name = new QLabel(QStringLiteral("HustMCL"), this);
+    auto* name = new QLabel(QStringLiteral("HustMCL"), brandBlock);
     name->setObjectName(QStringLiteral("BrandName"));
-    auto* sub = new QLabel(QStringLiteral("校园启动器"), this);
+    auto* sub = new QLabel(QStringLiteral("喻园方块启动器"), brandBlock);
     sub->setObjectName(QStringLiteral("BrandSub"));
     brandText->addWidget(name);
     brandText->addWidget(sub);
-    brandRow->addWidget(mark, 0, Qt::AlignVCenter);
+    brandRow->addWidget(m_brandMark, 0, Qt::AlignVCenter);
     brandRow->addLayout(brandText, 1);
-    layout->addLayout(brandRow);
+    layout->addWidget(brandBlock);
 
     m_badge = new QLabel(QStringLiteral("界面演示 · 样例数据"), this);
     m_badge->setObjectName(QStringLiteral("DemoBadge"));
-    m_badge->setAlignment(Qt::AlignCenter);
+    m_badge->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     m_badge->setToolTip(QStringLiteral("当前窗口只演示页面状态，不执行真实账号、下载或游戏启动操作。"));
     layout->addWidget(m_badge);
 
     auto* divider = new QFrame(this);
     divider->setObjectName(QStringLiteral("Divider"));
-    divider->setFixedHeight(1);
+    divider->setFixedHeight(2);
     layout->addWidget(divider);
 
+    // Hotbar Navigation List with 16x16 Minecraft Pixel Icons
     m_nav = new QListWidget(this);
     m_nav->setObjectName(QStringLiteral("Navigation"));
     m_nav->setAccessibleName(QStringLiteral("主导航"));
@@ -85,7 +81,9 @@ Sidebar::Sidebar(QWidget* parent)
     m_nav->setSelectionMode(QAbstractItemView::SingleSelection);
     m_nav->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_nav->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    m_nav->setFixedHeight(5 * 46);
+    m_nav->setIconSize(QSize(18, 18));
+    m_nav->setFixedHeight(5 * 47);
+
     const QStringList labels = {
         QStringLiteral("首页"),
         QStringLiteral("安装游戏"),
@@ -95,7 +93,7 @@ Sidebar::Sidebar(QWidget* parent)
     };
     for (int i = 0; i < labels.size(); ++i) {
         auto* item = new QListWidgetItem(labels.at(i), m_nav);
-        item->setSizeHint(QSize(0, 46));
+        item->setSizeHint(QSize(0, 47));
         if (i > kPageInstall) {
             item->setFlags(item->flags() & ~(Qt::ItemIsEnabled | Qt::ItemIsSelectable));
             item->setToolTip(QStringLiteral("该页面将在后续批次提供；当前仅演示首页与安装页。"));
@@ -108,62 +106,67 @@ Sidebar::Sidebar(QWidget* parent)
     m_navNote->setObjectName(QStringLiteral("NavNote"));
     m_navNote->setWordWrap(true);
     layout->addWidget(m_navNote);
+
+    // Compact Voxel Campus Panorama (shown on Install/Checks page when space permits)
     m_artwork = new CampusArtwork(this);
     m_artwork->setObjectName(QStringLiteral("CampusArtwork"));
-    m_artwork->setOverlayColor(QColor(QString::fromLatin1(theme::kRail)));
-    m_artwork->setFixedHeight(180);
+    m_artwork->setDisplayStyle(CampusArtwork::Style::CompactCrest);
+    m_artwork->setFixedHeight(104);
     m_artwork->setMinimumWidth(160);
     m_artwork->hide();
     layout->addWidget(m_artwork);
 
-#ifdef HUSTMCL_PUBLIC_RELEASE
-    m_artwork->setMottoTone(CampusArtwork::MottoTone::Forest);
-#else
-    m_caption = new QLabel(QStringLiteral("小科陪你，慢慢准备。"), this);
-    m_caption->setObjectName(QStringLiteral("SidebarCaption"));
-    m_caption->setWordWrap(true);
-    m_caption->hide();
-    layout->addWidget(m_caption);
-
-    m_subCaption = new QLabel(QStringLiteral("树荫下的片刻，也是冒险的起点。"), this);
-    m_subCaption->setObjectName(QStringLiteral("SidebarSub"));
-    m_subCaption->setWordWrap(true);
-    m_subCaption->hide();
-    layout->addWidget(m_subCaption);
-#endif
-
     layout->addStretch(1);
 
-    auto* accountDivider = new QFrame(this);
-    accountDivider->setObjectName(QStringLiteral("Divider"));
-    accountDivider->setFixedHeight(1);
-    layout->addWidget(accountDivider);
+    // HUST Motto Pixel Seal
+    m_mottoSeal = new QFrame(this);
+    m_mottoSeal->setObjectName(QStringLiteral("MottoSeal"));
+    auto* sealLayout = new QVBoxLayout(m_mottoSeal);
+    sealLayout->setContentsMargins(8, 6, 8, 6);
+    sealLayout->setSpacing(2);
+    auto* sealText = new QLabel(QStringLiteral("明德 · 厚学 · 求是 · 创新"), m_mottoSeal);
+    sealText->setObjectName(QStringLiteral("MottoSealText"));
+    sealText->setAlignment(Qt::AlignCenter);
+    auto* sealSub = new QLabel(QStringLiteral("HUST · 1037 FOREST"), m_mottoSeal);
+    sealSub->setObjectName(QStringLiteral("MottoSealSub"));
+    sealSub->setAlignment(Qt::AlignCenter);
+    sealLayout->addWidget(sealText);
+    sealLayout->addWidget(sealSub);
+    layout->addWidget(m_mottoSeal);
+
+    // Pixel Player Identity Block
+    auto* accountBlock = new QFrame(this);
+    accountBlock->setObjectName(QStringLiteral("AccountBlock"));
+    auto* accountBoxLayout = new QVBoxLayout(accountBlock);
+    accountBoxLayout->setContentsMargins(8, 8, 8, 8);
+    accountBoxLayout->setSpacing(6);
 
     auto* accountRow = new QHBoxLayout();
     accountRow->setContentsMargins(0, 0, 0, 0);
-    accountRow->setSpacing(10);
-    m_avatar = new QLabel(QStringLiteral("林"), this);
+    accountRow->setSpacing(9);
+    m_avatar = new QLabel(accountBlock);
     m_avatar->setObjectName(QStringLiteral("Avatar"));
     m_avatar->setAlignment(Qt::AlignCenter);
     auto* accountText = new QVBoxLayout();
     accountText->setContentsMargins(0, 0, 0, 0);
-    accountText->setSpacing(2);
-    m_accountName = new QLabel(QStringLiteral("林知远"), this);
+    accountText->setSpacing(1);
+    m_accountName = new QLabel(QStringLiteral("林知远"), accountBlock);
     m_accountName->setObjectName(QStringLiteral("AccountName"));
-    m_accountState = new QLabel(QStringLiteral("已连接"), this);
+    m_accountState = new QLabel(QStringLiteral("已连接"), accountBlock);
     m_accountState->setObjectName(QStringLiteral("AccountState"));
     accountText->addWidget(m_accountName);
     accountText->addWidget(m_accountState);
     accountRow->addWidget(m_avatar, 0, Qt::AlignVCenter);
     accountRow->addLayout(accountText, 1);
-    layout->addLayout(accountRow);
+    accountBoxLayout->addLayout(accountRow);
 
-    m_accountLink = new QPushButton(QStringLiteral("账号与授权 →"), this);
+    m_accountLink = new QPushButton(QStringLiteral("账号与授权 →"), accountBlock);
     m_accountLink->setObjectName(QStringLiteral("SecondaryAction"));
     m_accountLink->setCursor(Qt::PointingHandCursor);
     m_accountLink->setAutoDefault(false);
     m_accountLink->setAccessibleName(QStringLiteral("账号与授权"));
-    layout->addWidget(m_accountLink);
+    accountBoxLayout->addWidget(m_accountLink);
+    layout->addWidget(accountBlock);
 
     m_accountNote = new QLabel(QStringLiteral("演示窗口不会执行账号、下载或启动操作"), this);
     m_accountNote->setObjectName(QStringLiteral("DemoNote"));
@@ -189,7 +192,37 @@ Sidebar::Sidebar(QWidget* parent)
             emit unimplementedFeatureRequested(QStringLiteral("账号与授权"));
         }
     });
+
+    refreshIcons();
     updateMarketItem();
+}
+
+void Sidebar::refreshIcons()
+{
+    const qreal dpr = qMax<qreal>(1.0, devicePixelRatioF());
+    if (m_brandMark) {
+        m_brandMark->setPixmap(voxel::renderIcon(voxel::IconKind::SouthGateEmblem, 38, dpr));
+    }
+    if (m_avatar) {
+        m_avatar->setPixmap(voxel::renderIcon(voxel::IconKind::PlayerHead, 30, dpr));
+    }
+    if (m_nav && m_nav->count() >= 5) {
+        m_nav->item(kPageHome)->setIcon(voxel::icon(voxel::IconKind::GrassBlock, 18, dpr));
+        m_nav->item(kPageInstall)->setIcon(voxel::icon(voxel::IconKind::CraftingTable, 18, dpr));
+        m_nav->item(kPageSettings)->setIcon(voxel::icon(voxel::IconKind::RedstoneGear, 18, dpr));
+        m_nav->item(kPageLogs)->setIcon(voxel::icon(voxel::IconKind::BookQuill, 18, dpr));
+        m_nav->item(kPageMarket)->setIcon(voxel::icon(voxel::IconKind::EnderChest, 18, dpr));
+    }
+}
+
+void Sidebar::refreshTheme()
+{
+    refreshIcons();
+    if (m_artwork) {
+        m_artwork->syncSkyPhaseToTime();
+        m_artwork->update();
+    }
+    update();
 }
 
 void Sidebar::setRealMode(bool realMode)
@@ -275,7 +308,6 @@ void Sidebar::updateAccountPresentation()
                       : QStringLiteral("未登录"))
         : m_account.displayName;
     m_accountName->setText(name);
-    m_avatar->setText(name.isEmpty() ? QStringLiteral("H") : name.left(1));
     m_accountState->setText(copy::accountStateText(m_account.state));
     const bool ready = offline
         ? m_account.state == application::AccountState::Offline
@@ -355,12 +387,13 @@ void Sidebar::setCompact(bool compact)
         return;
     }
     m_compact = compact;
-    const int itemHeight = compact ? 38 : 46;
+    const int itemHeight = compact ? 38 : 47;
     for (int row = 0; row < m_nav->count(); ++row) {
         m_nav->item(row)->setSizeHint(QSize(0, itemHeight));
     }
     m_nav->setFixedHeight(m_nav->count() * itemHeight);
     m_navNote->setVisible(!compact && !m_realMode);
+    m_mottoSeal->setVisible(!compact);
     m_accountNote->setVisible(!compact);
     m_footer->setVisible(!compact);
     updateArtworkVisibility();
@@ -370,10 +403,6 @@ void Sidebar::updateArtworkVisibility()
 {
     const bool visible = m_artworkRequested && !m_compact;
     m_artwork->setVisible(visible);
-#ifndef HUSTMCL_PUBLIC_RELEASE
-    m_caption->setVisible(visible);
-    m_subCaption->setVisible(visible);
-#endif
 }
 
 } // namespace hustmcl::ui

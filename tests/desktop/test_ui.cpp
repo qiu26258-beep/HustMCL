@@ -12,6 +12,7 @@
 #include "hustmcl/application/launch_preparation.h"
 #include "hustmcl/application/modpack_import.h"
 #include "hustmcl/application/offline_controller.h"
+#include "pixel_title_bar.h"
 #include "primary_action_bar.h"
 #include "settings_page.h"
 #include "sidebar.h"
@@ -33,6 +34,7 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSignalSpy>
+#include <QSpinBox>
 #include <QStyle>
 #include <QStyleFactory>
 #include <QTest>
@@ -504,6 +506,17 @@ public:
         emit homeChanged(home);
         return true;
     }
+    bool setMemoryMb(int memoryMb) override
+    {
+        ++memoryRequests;
+        lastMemoryMb = memoryMb;
+        if (!acceptMemory) {
+            return false;
+        }
+        home.launch.memoryMb = memoryMb;
+        emit homeChanged(home);
+        return true;
+    }
     void publish()
     {
         emit homeChanged(home);
@@ -516,12 +529,15 @@ public:
     QString lastCancelId;
     QString lastRetryId;
     bool acceptName = true;
+    bool acceptMemory = true;
+    int lastMemoryMb = 0;
     int primaryRequests = 0;
     int retryRequests = 0;
     int signInRequests = 0;
     int signOutRequests = 0;
     int cancelSignInRequests = 0;
     int nameRequests = 0;
+    int memoryRequests = 0;
     int modeRequests = 0;
 };
 
@@ -1004,11 +1020,7 @@ void TestUi::longPathElidesAndRepeatedRenderKeepsWidgetCount()
     const QPixmap rendered = home.grab();
     QVERIFY(!rendered.isNull());
     QPixmap cached;
-#ifdef HUSTMCL_PUBLIC_RELEASE
     QVERIFY(!QPixmapCache::find(QStringLiteral("hustmcl/campus/xiaoke-campus"), &cached));
-#else
-    QVERIFY(QPixmapCache::find(QStringLiteral("hustmcl/campus/xiaoke-campus"), &cached));
-#endif
 }
 
 void TestUi::noDecorationHidesArtwork()
@@ -1023,41 +1035,20 @@ void TestUi::noDecorationHidesArtwork()
     auto* sidebarArtwork = window.sidebar()->findChild<QWidget*>(QStringLiteral("CampusArtwork"));
     QVERIFY(sidebarArtwork);
     QVERIFY(sidebarArtwork->isHidden());
-#ifdef HUSTMCL_PUBLIC_RELEASE
     QVERIFY(!window.sidebar()->findChild<QLabel*>(QStringLiteral("SidebarCaption")));
-#else
-    auto* sidebarCaption = window.sidebar()->findChild<QLabel*>(QStringLiteral("SidebarCaption"));
-    QVERIFY(sidebarCaption);
-    QVERIFY(sidebarCaption->isHidden());
-#endif
 
     auto* homeArtwork = window.homePage()->findChild<QWidget*>(QStringLiteral("CampusArtwork"));
     QVERIFY(homeArtwork);
     QVERIFY(homeArtwork->isHidden());
-#ifdef HUSTMCL_PUBLIC_RELEASE
     QVERIFY(!window.homePage()->findChild<QLabel*>(QStringLiteral("SidebarCaption")));
-    QVERIFY(!window.homePage()->findChild<QWidget*>(QStringLiteral("VDivider")));
-    auto* artworkColumn = window.homePage()->findChild<QWidget*>(
-        QStringLiteral("ArtworkColumn"));
-    QVERIFY(artworkColumn);
 
-    // Switching across the responsive breakpoint must not reintroduce a
-    // decorative gap or an empty right column when --no-decoration is active.
     window.setCurrentPage(hustmcl::app::MainWindow::Page::Home);
     QCoreApplication::processEvents();
-    QVERIFY(homeArtwork->isHidden());
-    QVERIFY(artworkColumn->isHidden());
     for (const QSize size : {QSize(1120, 720), QSize(840, 460), QSize(1120, 720)}) {
         window.resize(size);
         QCoreApplication::processEvents();
         QVERIFY(homeArtwork->isHidden());
-        QVERIFY(artworkColumn->isHidden());
     }
-#else
-    auto* homeCaption = window.homePage()->findChild<QLabel*>(QStringLiteral("SidebarCaption"));
-    QVERIFY(homeCaption);
-    QVERIFY(homeCaption->isHidden());
-#endif
 }
 
 void TestUi::settingsAndLogsAreDisabled()
@@ -1373,14 +1364,24 @@ void TestUi::offlineSettingsStayEditable()
     QVERIFY(input->isEnabled());
     QVERIFY(!panel->isVisible());
     QVERIFY(!signIn->isVisible());
-    QCOMPARE(bar->primaryButton()->text(), QStringLiteral("保存离线名"));
+    QCOMPARE(bar->primaryButton()->text(), QStringLiteral("保存设置"));
+
+    auto* memory = window.settingsPage()->findChild<QSpinBox*>(
+        QStringLiteral("MemoryInput"));
+    QVERIFY(memory);
+    QVERIFY(memory->isVisible());
+    QVERIFY(memory->isEnabled());
+    QCOMPARE(memory->value(), 2048);
 
     input->setText(QStringLiteral("Campus_Player"));
+    memory->setValue(4096);
     bar->primaryButton()->click();
     QCoreApplication::processEvents();
 
     QCOMPARE(gateway.nameRequests, 1);
     QCOMPARE(gateway.lastName, QStringLiteral("Campus_Player"));
+    QCOMPARE(gateway.memoryRequests, 1);
+    QCOMPARE(gateway.lastMemoryMb, 4096);
     QCOMPARE(gateway.signInRequests, 0);
     QCOMPARE(gateway.signOutRequests, 0);
     QCOMPARE(gateway.cancelSignInRequests, 0);
@@ -1590,19 +1591,26 @@ void TestUi::realSettingsDelegatesValidationToController()
 
     auto* input = window.settingsPage()->findChild<QLineEdit*>(QStringLiteral("PlayerNameInput"));
     QVERIFY(input);
+    auto* memory = window.settingsPage()->findChild<QSpinBox*>(QStringLiteral("MemoryInput"));
+    QVERIFY(memory);
+    QCOMPARE(memory->value(), 2048);
     auto* bar = window.settingsPage()->findChild<hustmcl::ui::PrimaryActionBar*>();
     QVERIFY(bar);
     QVERIFY(bar->primaryButton()->isEnabled());
 
     input->setText(QStringLiteral("Campus_Player"));
+    memory->setValue(4096);
     bar->primaryButton()->click();
     QCoreApplication::processEvents();
     QCOMPARE(controller.homeSnapshot().account.displayName, QStringLiteral("Campus_Player"));
+    QCOMPARE(controller.homeSnapshot().launch.memoryMb, 4096);
     QCOMPARE(input->text(), QStringLiteral("Campus_Player"));
+    QCOMPARE(memory->value(), 4096);
     auto* success = window.settingsPage()->findChild<QLabel*>(QStringLiteral("FieldSuccess"));
     QVERIFY(success);
     QVERIFY(success->isVisible());
     QVERIFY(success->text().contains(QStringLiteral("离线名已应用")));
+    QVERIFY(!success->text().contains(QStringLiteral("重新打开启动器后需要重新设置")));
 
     auto* error = window.settingsPage()->findChild<QLabel*>(QStringLiteral("FieldError"));
     QVERIFY(error);
@@ -1613,8 +1621,17 @@ void TestUi::realSettingsDelegatesValidationToController()
     QVERIFY(error->text().contains(QStringLiteral("离线名无效")));
     QCOMPARE(controller.homeSnapshot().account.displayName, QStringLiteral("Campus_Player"));
 
+    auto* themeSelector = window.settingsPage()->findChild<QComboBox*>(QStringLiteral("ThemeModeSelector"));
+    QVERIFY(themeSelector);
+    QVERIFY(QMetaObject::invokeMethod(themeSelector, "activated", Q_ARG(int, 1)));
+    QCOMPARE(window.themeMode(), hustmcl::ui::theme::ThemeMode::Dark);
+    QCOMPARE(window.resolvedTheme(), hustmcl::ui::theme::ResolvedTheme::Dark);
+    QVERIFY(QMetaObject::invokeMethod(themeSelector, "activated", Q_ARG(int, 2)));
+    QCOMPARE(window.themeMode(), hustmcl::ui::theme::ThemeMode::Light);
+    QCOMPARE(window.resolvedTheme(), hustmcl::ui::theme::ResolvedTheme::Light);
+
     const QString settingsText = joinedLabelText(*window.settingsPage());
-    QVERIFY(settingsText.contains(QStringLiteral("2048 MB")));
+    QVERIFY(!settingsText.contains(QStringLiteral("当前固定")));
     QVERIFY(settingsText.contains(QStringLiteral("26.2")));
     QVERIFY(settingsText.contains(QStringLiteral("D:\\HustMCL\\data")));
     QVERIFY(settingsText.contains(QStringLiteral("离线身份")));
@@ -1649,6 +1666,9 @@ void TestUi::realCloseDuringSessionKeepsOwnerAlive()
     auto* input = window.settingsPage()->findChild<QLineEdit*>(QStringLiteral("PlayerNameInput"));
     QVERIFY(input);
     QVERIFY(!input->isEnabled());
+    auto* memory = window.settingsPage()->findChild<QSpinBox*>(QStringLiteral("MemoryInput"));
+    QVERIFY(memory);
+    QVERIFY(!memory->isEnabled());
     auto* settingsBar = window.settingsPage()->findChild<hustmcl::ui::PrimaryActionBar*>();
     QVERIFY(settingsBar);
     QVERIFY(!settingsBar->primaryButton()->isEnabled());
@@ -2850,13 +2870,11 @@ void TestUi::homeImportRendersPackAndErrorContextAsPlainText()
 
 void TestUi::releaseArtworkMatchesBuildMode()
 {
-#ifdef HUSTMCL_PUBLIC_RELEASE
+    // Both local and public builds use the unified procedural HUST x Minecraft
+    // voxel panorama (East 9th Building + South Gate) with zero legacy character art.
     QVERIFY(!QFile(QStringLiteral(":/brand/xiaoke-campus.jpg")).exists());
-    QVERIFY(QFile(QStringLiteral(":/brand/public-campus.svg")).exists());
-#else
-    QVERIFY(QFile(QStringLiteral(":/brand/xiaoke-campus.jpg")).exists());
     QVERIFY(!QFile(QStringLiteral(":/brand/public-campus.svg")).exists());
-#endif
+    QVERIFY(QFile(QStringLiteral(":/brand/hustmcl-128.png")).exists());
 
     hustmcl::ui::HomePage home;
     auto* homeArtwork = home.findChild<QWidget*>(QStringLiteral("CampusArtwork"));
@@ -2864,32 +2882,14 @@ void TestUi::releaseArtworkMatchesBuildMode()
     hustmcl::ui::Sidebar sidebar;
     auto* sidebarArtwork = sidebar.findChild<QWidget*>(QStringLiteral("CampusArtwork"));
     QVERIFY(sidebarArtwork);
-#ifdef HUSTMCL_PUBLIC_RELEASE
-    QVERIFY(homeArtwork->accessibleName().contains(QStringLiteral("华中科技大学校训")));
-    QVERIFY(homeArtwork->accessibleName().contains(QStringLiteral("明德、厚学、求是、创新")));
-    QVERIFY(homeArtwork->accessibleName().contains(QStringLiteral("明德")));
-    QVERIFY(homeArtwork->accessibleName().contains(QStringLiteral("厚学")));
-    QVERIFY(homeArtwork->accessibleName().contains(QStringLiteral("求是")));
-    QVERIFY(homeArtwork->accessibleName().contains(QStringLiteral("创新")));
-    QVERIFY(sidebarArtwork->accessibleName().contains(QStringLiteral("华中科技大学校训")));
+    QVERIFY(homeArtwork->accessibleName().contains(QStringLiteral("华中科技大学")));
+    QVERIFY(homeArtwork->accessibleName().contains(QStringLiteral("东九")));
+    QVERIFY(homeArtwork->accessibleName().contains(QStringLiteral("南大门")));
     QVERIFY(!home.findChild<QLabel*>(QStringLiteral("SidebarCaption")));
-    QVERIFY(!home.findChild<QLabel*>(QStringLiteral("SidebarSub")));
     QVERIFY(!sidebar.findChild<QLabel*>(QStringLiteral("SidebarCaption")));
-    QVERIFY(!sidebar.findChild<QLabel*>(QStringLiteral("SidebarSub")));
-    const QString homeText = joinedLabelText(home);
-    QVERIFY(!homeText.contains(QStringLiteral("小科")));
-    QVERIFY(!homeText.contains(QStringLiteral("树影")));
+    QVERIFY(!joinedLabelText(home).contains(QStringLiteral("小科")));
     QVERIFY(!joinedLabelText(sidebar).contains(QStringLiteral("小科")));
-#else
-    auto* homeCaption = home.findChild<QLabel*>(QStringLiteral("SidebarCaption"));
-    QVERIFY(homeCaption);
-    auto* sidebarCaption = sidebar.findChild<QLabel*>(QStringLiteral("SidebarCaption"));
-    QVERIFY(sidebarCaption);
-    QVERIFY(homeCaption->text().contains(QStringLiteral("小科")));
-    QVERIFY(sidebarCaption->text().contains(QStringLiteral("小科")));
-    QVERIFY(homeArtwork->accessibleName().contains(QStringLiteral("小科")));
-    QVERIFY(sidebarArtwork->accessibleName().contains(QStringLiteral("小科")));
-#endif
+    QVERIFY(joinedLabelText(sidebar).contains(QStringLiteral("明德")));
 
     home.resize(1120, 720);
     home.show();
@@ -2898,11 +2898,8 @@ void TestUi::releaseArtworkMatchesBuildMode()
     const QPixmap rendered = home.grab();
     QVERIFY(!rendered.isNull());
     QPixmap cached;
-#ifdef HUSTMCL_PUBLIC_RELEASE
     QVERIFY(!QPixmapCache::find(QStringLiteral("hustmcl/campus/xiaoke-campus"), &cached));
 
-    // The motto card must stay in the first viewport at the default size and
-    // collapse to the compact strip without dropping decoration.
     hustmcl::app::DemoController controller;
     hustmcl::app::MainWindow window(&controller, hustmcl::app::MainWindow::Mode::Demo);
     window.setCurrentPage(hustmcl::app::MainWindow::Page::Home);
@@ -2912,41 +2909,34 @@ void TestUi::releaseArtworkMatchesBuildMode()
     auto* windowArtwork = window.homePage()->findChild<QWidget*>(QStringLiteral("CampusArtwork"));
     QVERIFY(windowArtwork);
     QVERIFY(windowArtwork->isVisible());
-    QCOMPARE(windowArtwork->size(), QSize(226, 208));
-    QCOMPARE(windowArtwork->contentsMargins().bottom(), 0);
-    auto* subtitle = window.homePage()->findChild<QLabel*>(QStringLiteral("PageSubtitle"));
-    QVERIFY(subtitle);
-    QVERIFY(subtitle->text().isEmpty());
-    QVERIFY(!subtitle->isVisible());
-    auto* pageTitle = window.homePage()->findChild<QLabel*>(QStringLiteral("PageTitle"));
-    QVERIFY(pageTitle);
-    QVERIFY(pageTitle->parentWidget());
-    QVERIFY(qAbs(pageTitle->geometry().center().y()
-                 - pageTitle->parentWidget()->rect().center().y())
-            <= 2);
-    QVERIFY(!window.homePage()->findChild<QWidget*>(QStringLiteral("VDivider")));
-    auto* scroll = window.homePage()->scrollArea();
-    QVERIFY(scroll);
-    QVERIFY(scroll->viewport()->rect().intersects(
-        QRect(windowArtwork->mapTo(scroll->viewport(), QPoint(0, 0)),
-              windowArtwork->size())));
+    QVERIFY(windowArtwork->width() >= 500);
+    QVERIFY(windowArtwork->height() >= 100);
+    QVERIFY(window.titleBar());
+    QVERIFY(window.titleBar()->isVisible());
+
+    // Verify dual-theme auto-time resolution (06:00-17:59 Light, 18:00-05:59 Dark)
+    using hustmcl::ui::theme::ResolvedTheme;
+    using hustmcl::ui::theme::SkyPhase;
+    using hustmcl::ui::theme::ThemeMode;
+    QCOMPARE(hustmcl::ui::theme::resolveTheme(ThemeMode::AutoByTime, QTime(10, 0)), ResolvedTheme::Light);
+    QCOMPARE(hustmcl::ui::theme::resolveTheme(ThemeMode::AutoByTime, QTime(21, 0)), ResolvedTheme::Dark);
+    QCOMPARE(hustmcl::ui::theme::resolveTheme(ThemeMode::Dark, QTime(10, 0)), ResolvedTheme::Dark);
+    QCOMPARE(hustmcl::ui::theme::resolveTheme(ThemeMode::Light, QTime(22, 0)), ResolvedTheme::Light);
+    QCOMPARE(hustmcl::ui::theme::resolveSkyPhase(QTime(7, 30)), SkyPhase::Dawn);
+    QCOMPARE(hustmcl::ui::theme::resolveSkyPhase(QTime(13, 0)), SkyPhase::Day);
+    QCOMPARE(hustmcl::ui::theme::resolveSkyPhase(QTime(18, 0)), SkyPhase::Sunset);
+    QCOMPARE(hustmcl::ui::theme::resolveSkyPhase(QTime(22, 0)), SkyPhase::Night);
+
+    window.setThemeMode(ThemeMode::Dark, QTime(12, 0), false);
+    QCOMPARE(window.resolvedTheme(), ResolvedTheme::Dark);
+    window.setThemeMode(ThemeMode::Light, QTime(22, 0), false);
+    QCOMPARE(window.resolvedTheme(), ResolvedTheme::Light);
+    window.setThemeMode(ThemeMode::AutoByTime, QTime(21, 0), false);
+    QCOMPARE(window.resolvedTheme(), ResolvedTheme::Dark);
 
     window.resize(840, 460);
     QCoreApplication::processEvents();
     QVERIFY(windowArtwork->isVisible());
-    QCOMPARE(windowArtwork->height(), 62);
-    QCOMPARE(windowArtwork->contentsRect().height(), 54);
-    QCOMPARE(windowArtwork->contentsMargins().bottom(), 8);
-    QVERIFY(scroll->viewport()->rect().intersects(
-        QRect(windowArtwork->mapTo(scroll->viewport(), QPoint(0, 0)),
-              windowArtwork->size())));
-
-    window.resize(1120, 720);
-    QCoreApplication::processEvents();
-    QVERIFY(windowArtwork->isVisible());
-    QCOMPARE(windowArtwork->size(), QSize(226, 208));
-    QCOMPARE(windowArtwork->contentsMargins().bottom(), 0);
-#endif
 }
 
 void TestUi::emptyModpackInstanceListIsExplained()

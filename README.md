@@ -2,9 +2,9 @@
 
 面向华科同学的 Windows 10 / 11 x64 Minecraft Java 启动器。用 C++20 和 Qt Widgets 实现，支持原版安装、符合条件的整合包导入，以及微软账号和本地离线玩家两种启动方式。
 
-![HustMCL 首页，右侧为华中科技大学校训](docs/images/home.png)
+![HustMCL 像素版首页，横幅为东九教学楼和南大门](docs/images/home.png)
 
-## Preview 5 安装与使用
+## Preview 6 安装与使用
 
 1. 解压分享包，运行 `HustMCL-Setup-Windows-x64.exe`，选择你希望保存启动器与游戏的目录。安装完成后打开 **HustMCL Accounts**。安装器未签名，可用包内的 `SHA256SUMS.txt` 核对下载完整性。
 2. 在设置里选择登录方式。微软账号需要拥有 Minecraft Java 版，并在浏览器完成授权。本地离线玩家用于单机游戏。微软登录的续期凭据由 Windows 在当前用户下加密保存在本地，可在设置中退出登录。
@@ -16,9 +16,9 @@
 
 ## 为什么做这个项目
 
-第一次装 Minecraft Java 时，选择版本、配置 Java、下载文件和启动经常混在一起。HustMCL 把安装与启动分成两步，在实例与检查页显示准备情况。界面采用森林绿，并以华科大校训作为首页的视觉中心。 [华中科技大学章程](https://www.hust.edu.cn/info/1195/9916.htm)
+第一次装 Minecraft Java 时，选择版本、配置 Java、下载文件和启动经常混在一起。HustMCL 把安装与启动分成两步，在实例与检查页显示准备情况。像素界面以东九教学楼和南大门为首页横幅，提供浅色、深色和跟随本地时间的主题。设置页可以保存下次启动游戏时的 JVM 内存上限。
 
-源码中，`src/core` 负责版本、Java 和安装计划的规则，`src/application` 编排安装和启动，`src/services` 处理下载、文件与系统调用，`src/ui` 展示状态，`src/app` 组装各层。可从 `tests/desktop/test_ui.cpp` 查看首页状态、整合包导入和校训布局的回归验证。
+源码中，`src/core` 负责版本、Java 和安装计划的规则，`src/application` 编排安装和启动，`src/services` 处理下载、文件与系统调用，`src/ui` 展示状态，`src/app` 组装各层。可从 `tests/desktop/test_ui.cpp` 查看首页状态、整合包导入、主题切换和内存设置的回归验证。
 
 ## 从源码构建
 

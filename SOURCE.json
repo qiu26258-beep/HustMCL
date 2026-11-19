@@ -1,6 +1,6 @@
 {
-  "version": "0.1.0-preview.5",
-  "publicBase": "0ab7f10948352bd246a4a9c9f83e9726d2d3132c",
-  "localUiRevision": "3c50cc1",
+  "version": "0.1.0-preview.6",
+  "publicBase": "f9d75ba053afd930635af3587e614915c9e2e990",
+  "localUiRevision": "632bea4",
   "publicBuild": true
 }

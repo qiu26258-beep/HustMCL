@@ -99,6 +99,8 @@ int main(int argc, char** argv)
 #endif
     QApplication::setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
     QApplication::setFont(hustmcl::ui::theme::baseFont());
+    hustmcl::ui::theme::setActiveTheme(
+        hustmcl::ui::theme::resolveTheme(hustmcl::ui::theme::ThemeMode::AutoByTime));
     app.setStyleSheet(hustmcl::ui::theme::styleSheet());
     Q_INIT_RESOURCE(resources);
 
@@ -160,7 +162,11 @@ int main(int argc, char** argv)
         QStringLiteral("factor"));
     QCommandLineOption noDecorationOption(
         QStringLiteral("no-decoration"),
-        QStringLiteral("Hide campus artwork and leaf decoration."));
+        QStringLiteral("Hide campus artwork and decoration."));
+    QCommandLineOption themeOption(
+        QStringLiteral("theme"),
+        QStringLiteral("Optional UI theme override: auto, dark or light."),
+        QStringLiteral("mode"));
     parser.addOption(scenarioOption);
     parser.addOption(dataRootOption);
     parser.addOption(javaOption);
@@ -173,6 +179,7 @@ int main(int argc, char** argv)
     parser.addOption(windowSizeOption);
     parser.addOption(scaleOption);
     parser.addOption(noDecorationOption);
+    parser.addOption(themeOption);
     parser.process(app);
 
     const bool demoMode = parser.isSet(scenarioOption);
@@ -237,6 +244,11 @@ int main(int argc, char** argv)
                                hustmcl::application::ContentController* content = nullptr,
                                hustmcl::application::ModpackController* modpacks = nullptr) {
         hustmcl::app::MainWindow window(gateway, mode);
+        if (parser.isSet(themeOption)) {
+            window.setThemeMode(
+                hustmcl::ui::theme::themeModeFromKey(parser.value(themeOption)),
+                QTime::currentTime(), false);
+        }
         window.setContentController(content);
         window.setModpackController(modpacks);
         window.setDecorationsVisible(!noDecoration);

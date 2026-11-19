@@ -1,11 +1,11 @@
 #include "stage_row.h"
 
 #include "copy.h"
+#include "xp_progress_bar.h"
 
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QProgressBar>
 #include <QStyle>
 #include <QVBoxLayout>
 
@@ -56,7 +56,7 @@ StageRow::StageRow(QWidget* parent)
     auto* progressLayout = new QVBoxLayout(m_progressBox);
     progressLayout->setContentsMargins(0, 2, 0, 0);
     progressLayout->setSpacing(4);
-    m_progress = new QProgressBar(m_progressBox);
+    m_progress = new XpProgressBar(m_progressBox);
     m_progress->setObjectName(QStringLiteral("StageProgress"));
     m_progress->setTextVisible(false);
     m_progress->setRange(0, 1000);

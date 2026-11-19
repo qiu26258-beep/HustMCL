@@ -4,6 +4,7 @@
 
 #include <QWidget>
 
+class QFrame;
 class QLabel;
 class QListWidget;
 class QPushButton;
@@ -24,6 +25,7 @@ public:
     void setCurrentPage(int pageIndex);
     void setArtworkVisible(bool visible);
     void setCompact(bool compact);
+    void refreshTheme();
     bool isRealMode() const;
 
 signals:
@@ -37,7 +39,9 @@ private:
     void updateAccountPresentation();
     void applyModeCopy();
     void updateMarketItem();
+    void refreshIcons();
 
+    QLabel* m_brandMark = nullptr;
     QListWidget* m_nav = nullptr;
     QLabel* m_badge = nullptr;
     QLabel* m_avatar = nullptr;
@@ -46,10 +50,9 @@ private:
     QLabel* m_navNote = nullptr;
     QLabel* m_accountNote = nullptr;
     QLabel* m_footer = nullptr;
+    QFrame* m_mottoSeal = nullptr;
     QPushButton* m_accountLink = nullptr;
     CampusArtwork* m_artwork = nullptr;
-    QLabel* m_caption = nullptr;
-    QLabel* m_subCaption = nullptr;
     application::AccountSnapshot m_account;
     bool m_realMode = false;
     bool m_offlineMode = true;
