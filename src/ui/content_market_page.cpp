@@ -617,9 +617,9 @@ void ContentMarketPage::updateProject()
         ? &m_snapshot.selectedProject.value()
         : nullptr;
     if (!project) {
-        m_projectTitle->setText(QStringLiteral("选择一个项目"));
+        m_projectTitle->setText(QStringLiteral("选择一个模组"));
         m_projectDescription->setText(
-            QStringLiteral("从左侧搜索结果中选择项目，查看介绍、版本和必需前置信息。"));
+            QStringLiteral("从左侧搜索结果中选择模组，查看简介、版本和前置模组要求。"));
         m_projectMeta->clear();
         m_filterLabel->setText(appliedFilterText());
         m_versionsTitle->setText(QStringLiteral("版本列表"));
@@ -699,8 +699,8 @@ void ContentMarketPage::updateDependency()
         } else {
             m_dependency->setText(
                 m_snapshot.versions.empty()
-                    ? QStringLiteral("选择项目后加载版本；下载前会显示所选版本的必需前置信息。")
-                    : QStringLiteral("选择一个版本后显示必需前置信息。"));
+                    ? QStringLiteral("选择模组后加载版本；下载前会显示前置模组要求。")
+                    : QStringLiteral("选择一个版本后显示前置模组要求。"));
         }
         return;
     }
@@ -713,16 +713,16 @@ void ContentMarketPage::updateDependency()
         const QString projectId = textFromStd(dependency.projectId);
         const QString versionId = textFromStd(dependency.versionId);
         if (!projectId.isEmpty() && !versionId.isEmpty()) {
-            required.append(QStringLiteral("项目 %1 · 版本 %2").arg(projectId, versionId));
+            required.append(QStringLiteral("模组 %1 · 版本 %2").arg(projectId, versionId));
         } else if (!projectId.isEmpty()) {
-            required.append(QStringLiteral("项目 %1").arg(projectId));
+            required.append(QStringLiteral("模组 %1").arg(projectId));
         }
     }
     if (required.isEmpty()) {
-        m_dependency->setText(QStringLiteral("所选版本未声明必需前置；启动器不会自动下载前置。"));
+        m_dependency->setText(QStringLiteral("该版本无需额外前置模组；启动器不会自动下载前置。"));
     } else {
         m_dependency->setText(
-            QStringLiteral("必需前置：%1。启动器不会自动下载前置。")
+            QStringLiteral("前置模组：%1。启动器不会自动下载前置。")
                 .arg(required.join(QStringLiteral("；"))));
     }
 }

@@ -68,7 +68,7 @@ StageRow::StageRow(QWidget* parent)
     auto* unknownLayout = new QHBoxLayout(m_unknown);
     unknownLayout->setContentsMargins(9, 6, 9, 6);
     unknownLayout->setSpacing(8);
-    m_unknownTitle = new QLabel(QStringLiteral("总量未知"), m_unknown);
+    m_unknownTitle = new QLabel(QStringLiteral("大小未知"), m_unknown);
     m_unknownTitle->setObjectName(QStringLiteral("UnknownTitle"));
     m_unknownValue = new QLabel(m_unknown);
     m_unknownValue->setObjectName(QStringLiteral("UnknownValue"));
@@ -122,7 +122,7 @@ void StageRow::setProgress(qint64 completedBytes, std::optional<qint64> totalByt
     } else {
         m_progress->hide();
         m_progressText->hide();
-        m_unknownValue->setText(QStringLiteral("已传输 %1").arg(copy::formatBytes(completedBytes)));
+        m_unknownValue->setText(QStringLiteral("已下载 %1").arg(copy::formatBytes(completedBytes)));
         m_unknown->show();
     }
 }

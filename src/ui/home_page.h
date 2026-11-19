@@ -93,6 +93,7 @@ private:
     QWidget* m_content = nullptr;
     QFrame* m_heroFrame = nullptr;
     CampusArtwork* m_artwork = nullptr;
+    QLabel* m_heroWordmark = nullptr;
     QLabel* m_landmarkBadge = nullptr;
     QLabel* m_skyBadge = nullptr;
     QLabel* m_instanceName = nullptr;

@@ -113,7 +113,7 @@ QString checkPhaseText(TaskPhase phase)
     case TaskPhase::Resolving:
         return QStringLiteral("读取版本信息");
     case TaskPhase::PreparingEnvironment:
-        return QStringLiteral("检测 Java 运行时");
+        return QStringLiteral("检测 Java 环境");
     case TaskPhase::Downloading:
         return QStringLiteral("检查本地文件");
     case TaskPhase::Verifying:

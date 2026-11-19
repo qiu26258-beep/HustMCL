@@ -51,12 +51,14 @@ Sidebar::Sidebar(QWidget* parent)
 
     auto* brandText = new QVBoxLayout();
     brandText->setContentsMargins(0, 0, 0, 0);
-    brandText->setSpacing(1);
-    auto* name = new QLabel(QStringLiteral("HustMCL"), brandBlock);
-    name->setObjectName(QStringLiteral("BrandName"));
-    auto* sub = new QLabel(QStringLiteral("喻园方块启动器"), brandBlock);
+    brandText->setSpacing(3);
+    m_brandWordmark = new QLabel(brandBlock);
+    m_brandWordmark->setObjectName(QStringLiteral("BrandName"));
+    m_brandWordmark->setAccessibleName(QStringLiteral("HustMCL"));
+    m_brandWordmark->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    auto* sub = new QLabel(QStringLiteral("HUSTer的启动器"), brandBlock);
     sub->setObjectName(QStringLiteral("BrandSub"));
-    brandText->addWidget(name);
+    brandText->addWidget(m_brandWordmark);
     brandText->addWidget(sub);
     brandRow->addWidget(m_brandMark, 0, Qt::AlignVCenter);
     brandRow->addLayout(brandText, 1);
@@ -203,6 +205,11 @@ void Sidebar::refreshIcons()
     if (m_brandMark) {
         m_brandMark->setPixmap(voxel::renderIcon(voxel::IconKind::SouthGateEmblem, 38, dpr));
     }
+    if (m_brandWordmark) {
+        const QPixmap wordmark = voxel::renderWordmark(2, dpr);
+        m_brandWordmark->setPixmap(wordmark);
+        m_brandWordmark->setFixedSize(wordmark.deviceIndependentSize().toSize());
+    }
     if (m_avatar) {
         m_avatar->setPixmap(voxel::renderIcon(voxel::IconKind::PlayerHead, 30, dpr));
     }
@@ -230,7 +237,7 @@ void Sidebar::setRealMode(bool realMode)
 {
     m_realMode = realMode;
     if (realMode) {
-        m_nav->item(kPageInstall)->setText(QStringLiteral("实例与检查"));
+        m_nav->item(kPageInstall)->setText(QStringLiteral("版本检查"));
         m_nav->item(kPageSettings)->setText(QStringLiteral("设置"));
         m_nav->item(kPageLogs)->setText(QStringLiteral("日志与错误"));
         m_nav->item(kPageMarket)->setText(QStringLiteral("模组市场"));
@@ -328,11 +335,11 @@ void Sidebar::applyModeCopy()
         return;
     }
     if (m_offlineMode) {
-        m_badge->setText(QStringLiteral("本地离线体验"));
+        m_badge->setText(QStringLiteral("离线模式"));
         m_badge->setToolTip(
-            QStringLiteral("本地离线单机启动；不使用微软账号，也不下载其他版本。"));
-        m_accountNote->setText(QStringLiteral("离线身份仅用于本地游戏，不是正版登录。"));
-        m_footer->setText(QStringLiteral("HustMCL 0.1 · 本地离线"));
+            QStringLiteral("离线单机启动；无需微软账号，无法进入需要正版验证的服务器。"));
+        m_accountNote->setText(QStringLiteral("离线模式仅用于单机游玩，不是正版登录。"));
+        m_footer->setText(QStringLiteral("HustMCL 0.1 · 离线模式"));
         return;
     }
     m_badge->setText(QStringLiteral("微软账号"));
@@ -351,8 +358,8 @@ void Sidebar::updateAccountLink()
     }
     if (m_realMode) {
         if (m_offlineMode) {
-            m_accountLink->setText(QStringLiteral("修改离线身份 →"));
-            m_accountLink->setAccessibleName(QStringLiteral("修改离线身份"));
+            m_accountLink->setText(QStringLiteral("修改离线玩家名 →"));
+            m_accountLink->setAccessibleName(QStringLiteral("修改离线玩家名"));
             return;
         }
         const bool signedIn = m_account.state == application::AccountState::SignedIn;

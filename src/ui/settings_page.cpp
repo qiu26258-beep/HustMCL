@@ -102,12 +102,12 @@ SettingsPage::SettingsPage(QWidget* parent)
     offlineLayout->setContentsMargins(0, 4, 0, 0);
     offlineLayout->setSpacing(6);
 
-    auto* identityTitle = new QLabel(QStringLiteral("本地身份"), m_offlineSection);
+    auto* identityTitle = new QLabel(QStringLiteral("离线玩家"), m_offlineSection);
     identityTitle->setObjectName(QStringLiteral("SectionTitle"));
     offlineLayout->addWidget(identityTitle);
     m_identityNote = new QLabel(
-        QStringLiteral("离线名仅用于本地单机游戏，不是微软正版登录。"
-                       "改名会改变离线 UUID，也会影响已有世界中该玩家的身份与物品归属。"),
+        QStringLiteral("离线玩家名仅用于本地单机游玩，不是微软正版登录。"
+                       "改名会改变离线 UUID，也会影响已有存档中的角色背包与数据归属。"),
         m_offlineSection);
     m_identityNote->setObjectName(QStringLiteral("DetailNote"));
     m_identityNote->setWordWrap(true);
@@ -400,15 +400,15 @@ void SettingsPage::setSnapshot(const application::HomeSnapshot& home)
 
     if (m_offlineMode) {
         header()->setContent(QStringLiteral("设置"),
-                             QStringLiteral("主题外观、本地离线身份与运行配置"),
-                             QStringLiteral("本地离线"));
+                             QStringLiteral("主题外观、离线玩家与游戏内存配置"),
+                             QStringLiteral("离线模式"));
         const QString name = home.account.displayName;
         if (!m_nameEdited && m_nameInput->text() != name) {
             m_nameInput->setText(name);
         }
     } else {
         header()->setContent(QStringLiteral("设置"),
-                             QStringLiteral("主题外观、微软账号与运行配置"),
+                             QStringLiteral("主题外观、微软账号与游戏内存配置"),
                              QStringLiteral("微软账号"));
     }
 
@@ -545,21 +545,21 @@ void SettingsPage::applyEnabledState()
     if (m_offlineMode) {
         m_nameInput->setEnabled(editable);
         m_actionBar->setPrimary(QStringLiteral("保存设置"), editable,
-                                editable ? QStringLiteral("保存离线身份与内存上限，下次启动游戏时生效。")
-                                         : QStringLiteral("游戏运行中不能修改离线身份或内存设置。"));
+                                editable ? QStringLiteral("保存离线玩家名与内存上限，下次启动游戏时生效。")
+                                         : QStringLiteral("游戏运行中不能修改离线玩家名或内存设置。"));
         m_actionBar->setPrimaryVisible(true);
         m_actionBar->setSecondary(QString(), false, false, {});
         if (m_sessionActive) {
             m_actionBar->setTitle(QStringLiteral("游戏运行中"));
-            m_actionBar->setNote(QStringLiteral("请先退出游戏，再修改离线身份或内存上限。"));
+            m_actionBar->setNote(QStringLiteral("请先退出游戏，再修改离线玩家名或内存上限。"));
             m_identityNote->setText(
-                QStringLiteral("游戏运行中不能修改离线身份。关闭启动器窗口不会结束游戏。"));
+                QStringLiteral("游戏运行中不能修改离线玩家名。关闭启动器窗口不会结束游戏。"));
         } else {
-            m_actionBar->setTitle(QStringLiteral("本地设置"));
-            m_actionBar->setNote(QStringLiteral("保存仅更新离线名与内存上限，下次启动时生效，不会自动开始游戏。"));
+            m_actionBar->setTitle(QStringLiteral("游戏设置"));
+            m_actionBar->setNote(QStringLiteral("保存仅更新离线玩家名与内存上限，下次启动生效，不会自动进游戏。"));
             m_identityNote->setText(
-                QStringLiteral("离线玩家无需微软登录，可用于本地单机游戏；无法加入要求正版验证的服务器或 Realms。"
-                               "改名会改变离线 UUID，也会影响已有世界中该玩家的身份与物品归属。"));
+                QStringLiteral("离线模式无需微软登录，适合单机游玩；无法加入要求正版验证的服务器或 Realms。"
+                               "改名会改变离线 UUID，也会影响已有存档中的角色背包与数据归属。"));
         }
         return;
     }

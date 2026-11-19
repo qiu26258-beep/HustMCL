@@ -45,6 +45,7 @@ private:
     void refreshIcons();
 
     QLabel* m_brandMark = nullptr;
+    QLabel* m_brandWordmark = nullptr;
     QListWidget* m_nav = nullptr;
     QLabel* m_badge = nullptr;
     QLabel* m_avatar = nullptr;

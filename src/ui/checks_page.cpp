@@ -19,8 +19,8 @@ namespace hustmcl::ui {
 ChecksPage::ChecksPage(QWidget* parent)
     : PageScaffold(parent)
 {
-    header()->setContent(QStringLiteral("实例与检查"),
-                         QStringLiteral("游戏实例与启动前检查"), QString());
+    header()->setContent(QStringLiteral("版本检查"),
+                         QStringLiteral("游戏版本与启动前检查"), QString());
 
     m_content = new QWidget;
     auto* contentLayout = new QVBoxLayout(m_content);
@@ -173,17 +173,17 @@ void ChecksPage::setSnapshot(const application::HomeSnapshot& home,
     m_task = task;
 
     const QString instanceName = home.instance.displayName.isEmpty()
-        ? (home.offlineMode ? QStringLiteral("本地离线实例") : QStringLiteral("尚未安装实例"))
+        ? (home.offlineMode ? QStringLiteral("本地离线版本") : QStringLiteral("尚未安装游戏"))
         : home.instance.displayName;
     const QString edition = home.instance.editionLabel.isEmpty()
-        ? (home.offlineMode ? QStringLiteral("本地离线") : QStringLiteral("正版账号"))
+        ? (home.offlineMode ? QStringLiteral("离线模式") : QStringLiteral("正版账号"))
         : home.instance.editionLabel;
     QString subtitle = QStringLiteral("%1 · %2").arg(instanceName, edition);
     if (!home.instance.versionLabel.isEmpty()) {
         subtitle = QStringLiteral("%1 · Minecraft %2 · %3")
                        .arg(instanceName, home.instance.versionLabel, edition);
     }
-    header()->setContent(QStringLiteral("实例与检查"), subtitle,
+    header()->setContent(QStringLiteral("版本检查"), subtitle,
                          home.statusTitle.isEmpty()
                              ? QStringLiteral("正在读取当前状态")
                              : home.statusTitle);
@@ -195,7 +195,7 @@ void ChecksPage::setSnapshot(const application::HomeSnapshot& home,
         ? home.account.state == application::AccountState::Offline
         : home.account.state == application::AccountState::SignedIn;
     m_identityRow->setData(
-        home.offlineMode ? QStringLiteral("离线身份") : QStringLiteral("账号"), identityName,
+        home.offlineMode ? QStringLiteral("离线玩家") : QStringLiteral("账号"), identityName,
         copy::accountStateText(home.account.state),
         identityReady);
 
@@ -206,18 +206,21 @@ void ChecksPage::setSnapshot(const application::HomeSnapshot& home,
     if (javaValue.isEmpty()) {
         javaValue = QStringLiteral("启动时检测");
     }
-    m_javaRow->setData(QStringLiteral("Java 运行时"), javaValue,
+    m_javaRow->setData(QStringLiteral("Java 环境"), javaValue,
                        copy::javaStateText(home.environment.state),
                        home.environment.state == application::JavaState::Ready);
 
     QString instanceValue = home.instance.versionLabel;
     if (!home.instance.editionLabel.isEmpty()) {
-        instanceValue += QStringLiteral(" · ") + home.instance.editionLabel;
+        if (!instanceValue.isEmpty()) {
+            instanceValue += QStringLiteral(" · ");
+        }
+        instanceValue += home.instance.editionLabel;
     }
     if (instanceValue.isEmpty()) {
         instanceValue = QStringLiteral("启动时读取");
     }
-    m_instanceRow->setData(QStringLiteral("游戏实例"), instanceValue,
+    m_instanceRow->setData(QStringLiteral("游戏版本"), instanceValue,
                            copy::instanceStateText(home.instance.state),
                            home.instance.state == application::InstanceState::Ready);
 

@@ -129,7 +129,7 @@ InstallPage::InstallPage(QWidget* parent)
     completeLabel->setObjectName(QStringLiteral("DetailLabel"));
     rightLayout->addWidget(completeLabel);
     auto* completeNote = new QLabel(
-        QStringLiteral("安装就绪不等于已进入游戏主菜单；启动状态会单独显示。"), m_right);
+        QStringLiteral("安装完成后不会自动进游戏，请手动点击“启动游戏”。"), m_right);
     completeNote->setObjectName(QStringLiteral("DetailNote"));
     completeNote->setWordWrap(true);
     rightLayout->addWidget(completeNote);
@@ -162,7 +162,7 @@ void InstallPage::setSnapshot(const application::InstallSnapshot& snapshot)
     m_snapshot = snapshot;
     const application::TaskSnapshot& task = snapshot.task;
     const QString instanceName = snapshot.instanceDisplayName.isEmpty()
-        ? QStringLiteral("当前实例")
+        ? QStringLiteral("当前版本")
         : snapshot.instanceDisplayName;
     const QString subtitle = QStringLiteral("为%1准备 Minecraft %2")
                                  .arg(instanceName, snapshot.versionLabel);
@@ -272,14 +272,14 @@ void InstallPage::updateActionBar()
         primaryTip = task.retryReason;
         break;
     case application::TaskState::Succeeded:
-        title = QStringLiteral("安装就绪");
-        note = QStringLiteral("安装完成不等于已进入游戏主菜单；启动状态会单独显示。");
+        title = QStringLiteral("安装完成");
+        note = QStringLiteral("安装完成后不会自动进游戏，请手动点击“启动游戏”。");
         break;
     case application::TaskState::Running:
         if (task.phase == application::TaskPhase::Committing) {
-            title = QStringLiteral("正在完成安装");
+            title = QStringLiteral("正在收尾安装");
             note = task.cancelReason.isEmpty()
-                ? QStringLiteral("提交窗口不可取消。")
+                ? QStringLiteral("收尾阶段暂不可取消。")
                 : task.cancelReason;
             secondaryText = QStringLiteral("取消不可用");
             secondaryVisible = true;
@@ -337,7 +337,7 @@ QString InstallPage::actionNote() const
                  copy::formatBytes(task.totalBytes.value()),
                  copy::formatPercent(task.completedBytes, task.totalBytes.value()));
     }
-    return QStringLiteral("%1 · 总量未知 · 已传输 %2")
+    return QStringLiteral("%1 · 大小未知 · 已下载 %2")
         .arg(detail, copy::formatBytes(task.completedBytes));
 }
 

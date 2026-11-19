@@ -85,7 +85,7 @@ QString importErrorText(application::ImportError error)
     case application::ImportError::Storage:
         return QStringLiteral("保存整合包文件失败，请检查磁盘空间和权限。");
     case application::ImportError::Conflict:
-        return QStringLiteral("目标实例或文件与现有内容冲突。");
+        return QStringLiteral("目标版本目录或文件与已有内容冲突。");
     case application::ImportError::JavaUnavailable:
         return QStringLiteral("没有找到可用的 Java 运行环境。");
     case application::ImportError::Cancelled:
@@ -141,7 +141,7 @@ QString vanillaErrorText(application::ImportError error)
     case application::ImportError::Storage:
         return QStringLiteral("保存原版文件失败，请检查磁盘空间和权限。");
     case application::ImportError::Conflict:
-        return QStringLiteral("该版本已经安装，可在上方切换实例，无需重复安装。");
+        return QStringLiteral("该版本已经安装，可在上方切换版本，无需重复安装。");
     case application::ImportError::JavaUnavailable:
         return QStringLiteral("没有找到可用的 Java 运行环境。");
     case application::ImportError::Cancelled:
@@ -188,11 +188,11 @@ HomePage::HomePage(QWidget* parent)
     contentLayout->setContentsMargins(18, 16, 18, 16);
     contentLayout->setSpacing(14);
 
-    // ==================== 1. HERO DIORAMA BANNER (东九教学楼 + 华科南大门) ====================
+    // ==================== 1. HERO DIORAMA BANNER (东九教学楼 + 华科南大门 + 像素大标题) ====================
     m_heroFrame = new QFrame(m_content);
     m_heroFrame->setObjectName(QStringLiteral("HeroBannerFrame"));
-    m_heroFrame->setMinimumHeight(138);
-    m_heroFrame->setMaximumHeight(156);
+    m_heroFrame->setMinimumHeight(156);
+    m_heroFrame->setMaximumHeight(172);
     auto* heroStack = new QGridLayout(m_heroFrame);
     heroStack->setContentsMargins(0, 0, 0, 0);
     heroStack->setSpacing(0);
@@ -206,13 +206,13 @@ HomePage::HomePage(QWidget* parent)
     auto* heroOverlay = new QWidget(m_heroFrame);
     heroOverlay->setAttribute(Qt::WA_TranslucentBackground);
     auto* overlayLayout = new QVBoxLayout(heroOverlay);
-    overlayLayout->setContentsMargins(16, 12, 16, 14);
+    overlayLayout->setContentsMargins(16, 10, 16, 12);
     overlayLayout->setSpacing(4);
 
     auto* tagRow = new QHBoxLayout();
     tagRow->setContentsMargins(0, 0, 0, 0);
     tagRow->setSpacing(8);
-    m_landmarkBadge = new QLabel(QStringLiteral("华中科技大学 · 东九 & 南大门"), heroOverlay);
+    m_landmarkBadge = new QLabel(QStringLiteral("华科 · 东九 & 南大门 · HUSTer的启动器"), heroOverlay);
     m_landmarkBadge->setStyleSheet(
         QStringLiteral("QLabel { background: #C94530; color: #FFFFFF; border-top: 2px solid #F07A67;"
                        " border-bottom: 2px solid #7E2315; padding: 2px 8px; font-size: 11px; font-weight: 700; }"));
@@ -221,22 +221,34 @@ HomePage::HomePage(QWidget* parent)
         QStringLiteral("QLabel { background: rgba(9, 18, 14, 185); color: #F7D47A;"
                        " border: 1px solid #4A6D5D; padding: 2px 7px; font-size: 10.5px; font-weight: 600; }"));
     tagRow->addWidget(m_landmarkBadge, 0);
-    tagRow->addWidget(m_skyBadge, 0);
     tagRow->addStretch(1);
+    tagRow->addWidget(m_skyBadge, 0);
     overlayLayout->addLayout(tagRow);
+
+    // Centerpiece Minecraft-style pixel "HustMCL" wordmark floating in the campus sky
+    m_heroWordmark = new QLabel(heroOverlay);
+    m_heroWordmark->setObjectName(QStringLiteral("HeroWordmark"));
+    m_heroWordmark->setAccessibleName(QStringLiteral("HustMCL"));
+    m_heroWordmark->setAlignment(Qt::AlignCenter);
+    overlayLayout->addWidget(m_heroWordmark, 0, Qt::AlignHCenter);
     overlayLayout->addStretch(1);
 
+    auto* bottomHeroRow = new QHBoxLayout();
+    bottomHeroRow->setContentsMargins(0, 0, 0, 0);
+    bottomHeroRow->setSpacing(10);
     m_instanceName = new QLabel(heroOverlay);
     m_instanceName->setObjectName(QStringLiteral("InstanceName"));
     m_instanceName->setStyleSheet(
-        QStringLiteral("QLabel { color: #FFFFFF; background: transparent; font-size: 21px; font-weight: 700; }"));
+        QStringLiteral("QLabel { color: #FFFFFF; background: transparent; font-size: 19px; font-weight: 700; }"));
     m_instanceMeta = new QLabel(heroOverlay);
     m_instanceMeta->setObjectName(QStringLiteral("InstanceMeta"));
     m_instanceMeta->setStyleSheet(
-        QStringLiteral("QLabel { color: #DCEBE2; background: rgba(8, 18, 14, 165);"
+        QStringLiteral("QLabel { color: #DCEBE2; background: rgba(8, 18, 14, 175);"
                        " border: 1px solid rgba(110, 180, 140, 110); padding: 2px 8px; font-size: 11.5px; }"));
-    overlayLayout->addWidget(m_instanceName, 0, Qt::AlignLeft);
-    overlayLayout->addWidget(m_instanceMeta, 0, Qt::AlignLeft);
+    bottomHeroRow->addWidget(m_instanceName, 0, Qt::AlignBottom);
+    bottomHeroRow->addWidget(m_instanceMeta, 0, Qt::AlignBottom);
+    bottomHeroRow->addStretch(1);
+    overlayLayout->addLayout(bottomHeroRow);
 
     heroStack->addWidget(heroOverlay, 0, 0);
     contentLayout->addWidget(m_heroFrame);
@@ -258,7 +270,7 @@ HomePage::HomePage(QWidget* parent)
     auto* readinessLayout = new QVBoxLayout(readinessCard);
     readinessLayout->setContentsMargins(14, 12, 14, 12);
     readinessLayout->setSpacing(4);
-    auto* readinessTitle = new QLabel(QStringLiteral("准备状态"), readinessCard);
+    auto* readinessTitle = new QLabel(QStringLiteral("启动准备"), readinessCard);
     readinessTitle->setObjectName(QStringLiteral("SectionTitle"));
     readinessLayout->addWidget(readinessTitle);
     readinessLayout->addSpacing(2);
@@ -353,7 +365,7 @@ HomePage::HomePage(QWidget* parent)
     auto* dropText = new QVBoxLayout();
     dropText->setContentsMargins(0, 0, 0, 0);
     dropText->setSpacing(2);
-    auto* dropTitle = new QLabel(QStringLiteral("拖入整合包到合成槽"), m_modpackDropZone);
+    auto* dropTitle = new QLabel(QStringLiteral("拖入整合包到这里"), m_modpackDropZone);
     dropTitle->setObjectName(QStringLiteral("ImportDropTitle"));
     auto* dropSub = new QLabel(QStringLiteral("支持 .zip / .mrpack，一次一个"), m_modpackDropZone);
     dropSub->setObjectName(QStringLiteral("ImportDropSub"));
@@ -374,11 +386,11 @@ HomePage::HomePage(QWidget* parent)
     auto* instanceRow = new QHBoxLayout();
     instanceRow->setContentsMargins(0, 2, 0, 0);
     instanceRow->setSpacing(8);
-    auto* instanceLabel = new QLabel(QStringLiteral("当前实例"), modpackCard);
+    auto* instanceLabel = new QLabel(QStringLiteral("当前版本"), modpackCard);
     instanceLabel->setObjectName(QStringLiteral("DetailLabel"));
     m_modpackInstance = new ComboBox(modpackCard);
     m_modpackInstance->setObjectName(QStringLiteral("ModpackInstanceCombo"));
-    m_modpackInstance->setAccessibleName(QStringLiteral("当前游戏实例"));
+    m_modpackInstance->setAccessibleName(QStringLiteral("当前游戏版本"));
     instanceRow->addWidget(instanceLabel, 0, Qt::AlignVCenter);
     instanceRow->addWidget(m_modpackInstance, 1);
     modpackLayout->addLayout(instanceRow);
@@ -441,7 +453,7 @@ HomePage::HomePage(QWidget* parent)
     modpackLayout->addLayout(importActions);
 
     m_modpackNote = new QLabel(
-        QStringLiteral("可选客户端内容默认随包安装；安装完成后请手动启动游戏。"),
+        QStringLiteral("可选模组默认随包安装；装好后请手动启动游戏。"),
         modpackCard);
     m_modpackNote->setObjectName(QStringLiteral("Footnote"));
     m_modpackNote->setWordWrap(true);
@@ -466,7 +478,7 @@ HomePage::HomePage(QWidget* parent)
     summaryLayout->setContentsMargins(14, 12, 14, 12);
     summaryLayout->setSpacing(6);
 
-    auto* summaryTitle = new QLabel(QStringLiteral("启动摘要"), summaryCard);
+    auto* summaryTitle = new QLabel(QStringLiteral("启动配置"), summaryCard);
     summaryTitle->setObjectName(QStringLiteral("SectionTitle"));
     summaryLayout->addWidget(summaryTitle);
 
@@ -589,6 +601,7 @@ HomePage::HomePage(QWidget* parent)
 
 void HomePage::refreshTheme(const QTime& localTime)
 {
+    const qreal dpr = qMax<qreal>(1.0, devicePixelRatioF());
     if (m_artwork) {
         m_artwork->syncSkyPhaseToTime(localTime);
         m_artwork->update();
@@ -596,8 +609,13 @@ void HomePage::refreshTheme(const QTime& localTime)
             m_skyBadge->setText(theme::skyPhaseLabel(m_artwork->skyPhase()));
         }
     }
+    if (m_heroWordmark) {
+        const int wordmarkScale = width() < 760 ? 3 : 4;
+        const QPixmap wordmark = voxel::renderWordmark(wordmarkScale, dpr);
+        m_heroWordmark->setPixmap(wordmark);
+        m_heroWordmark->setFixedSize(wordmark.deviceIndependentSize().toSize());
+    }
     if (m_dropIcon) {
-        const qreal dpr = qMax<qreal>(1.0, devicePixelRatioF());
         m_dropIcon->setPixmap(voxel::renderIcon(voxel::IconKind::ModpackCrate, 24, dpr));
     }
     if (m_modpackProgress) {
@@ -617,7 +635,7 @@ void HomePage::setSnapshot(const application::HomeSnapshot& snapshot)
         ? QStringLiteral("你好")
         : snapshot.greeting;
     const QString instanceName = snapshot.instance.displayName.isEmpty()
-        ? QStringLiteral("尚未安装实例")
+        ? QStringLiteral("尚未安装游戏")
         : snapshot.instance.displayName;
     QString instanceMeta = snapshot.instance.versionLabel;
     if (!snapshot.instance.editionLabel.isEmpty()) {
@@ -640,7 +658,7 @@ void HomePage::setSnapshot(const application::HomeSnapshot& snapshot)
     const bool accountReady = snapshot.offlineMode
         ? snapshot.account.state == application::AccountState::Offline
         : snapshot.account.state == application::AccountState::SignedIn;
-    m_accountRow->setData(snapshot.offlineMode ? QStringLiteral("离线身份") : QStringLiteral("账号"),
+    m_accountRow->setData(snapshot.offlineMode ? QStringLiteral("离线玩家") : QStringLiteral("账号"),
                           accountValue,
                           copy::accountStateText(snapshot.account.state),
                           accountReady);
@@ -652,7 +670,7 @@ void HomePage::setSnapshot(const application::HomeSnapshot& snapshot)
     if (javaValue.isEmpty()) {
         javaValue = QStringLiteral("自动选择");
     }
-    m_javaRow->setData(QStringLiteral("Java 运行时"), javaValue,
+    m_javaRow->setData(QStringLiteral("Java 环境"), javaValue,
                        copy::javaStateText(snapshot.environment.state),
                        snapshot.environment.state == application::JavaState::Ready);
 
@@ -666,7 +684,7 @@ void HomePage::setSnapshot(const application::HomeSnapshot& snapshot)
     if (instanceValue.isEmpty()) {
         instanceValue = QStringLiteral("尚未安装");
     }
-    m_instanceRow->setData(QStringLiteral("游戏实例"), instanceValue,
+    m_instanceRow->setData(QStringLiteral("游戏版本"), instanceValue,
                            copy::instanceStateText(snapshot.instance.state),
                            snapshot.instance.state == application::InstanceState::Ready);
 
@@ -774,7 +792,7 @@ void HomePage::updateModpackUi()
         }
         const int selected = m_modpackInstance->findData(m_modpackSnapshot.selectedId);
         if (m_modpackInstance->count() == 0) {
-            m_modpackInstance->addItem(QStringLiteral("暂无可用实例"), QString());
+            m_modpackInstance->addItem(QStringLiteral("暂无已安装版本"), QString());
             m_modpackInstance->setCurrentIndex(0);
         } else {
             m_modpackInstance->setCurrentIndex(selected);
@@ -840,19 +858,19 @@ void HomePage::updateModpackUi()
         progressParts.append(QStringLiteral("已处理 %1 个文件").arg(completedFiles));
     }
     if (hasByteTotal) {
-        progressParts.append(QStringLiteral("已传输 %1 / %2（%3）")
+        progressParts.append(QStringLiteral("已下载 %1 / %2（%3）")
                                  .arg(copy::formatBytes(completedBytes),
                                       copy::formatBytes(totalBytes),
                                       copy::formatPercent(completedBytes, totalBytes)));
     } else if (completedBytes > 0) {
-        progressParts.append(QStringLiteral("已传输 %1 · 总量未知")
+        progressParts.append(QStringLiteral("已下载 %1 · 大小未知")
                                  .arg(copy::formatBytes(completedBytes)));
     }
     if (progressParts.isEmpty()
         && (phase == application::ImportPhase::PreparingGame
             || phase == application::ImportPhase::InstallingFiles
             || phase == application::ImportPhase::Committing)) {
-        progressParts.append(QStringLiteral("总量未知"));
+        progressParts.append(QStringLiteral("大小未知"));
     }
     m_modpackProgressText->setText(progressParts.join(QStringLiteral(" · ")));
     m_modpackProgressText->setVisible(!progressParts.isEmpty());
@@ -915,8 +933,8 @@ void HomePage::updateModpackUi()
                               : QStringLiteral("重新读取整合包并导入。")));
 
     m_modpackNote->setText(
-        vanilla ? QStringLiteral("原版安装完成后请手动启动游戏。")
-                : QStringLiteral("可选客户端内容默认随包安装；安装完成后请手动启动游戏。"));
+        vanilla ? QStringLiteral("原版装好后请手动点击启动游戏。")
+                : QStringLiteral("可选模组默认随包安装；装好后请手动启动游戏。"));
     m_modpackHint->setVisible(m_modpackAvailable && !m_modpackHint->text().isEmpty());
     updateVanillaUi();
 }
@@ -998,7 +1016,7 @@ void HomePage::updateVanillaUi()
     } else if (!snapshot.vanillaVersion.isEmpty()) {
         const QString version = snapshot.vanillaVersion;
         if (snapshot.phase == application::ImportPhase::Succeeded) {
-            hint = QStringLiteral("Minecraft %1 原版安装完成，可在上方切换实例后手动启动。")
+            hint = QStringLiteral("Minecraft %1 原版安装完成，可在上方切换版本后手动启动。")
                        .arg(version);
         } else if (snapshot.phase == application::ImportPhase::Failed) {
             hint = QStringLiteral("原版安装失败，可重试或重新选择版本。");
@@ -1196,7 +1214,7 @@ void HomePage::applyActionBar()
         } else {
             m_actionBar->setSecondary(
                 QStringLiteral("安装其他版本（未接入）"), true, false,
-                QStringLiteral("当前仅支持启动已安装的本地 26.2 离线实例；下载其他版本尚未实现。"),
+                QStringLiteral("当前仅支持启动已安装的本地 26.2 离线版本；下载其他版本尚未实现。"),
                 false);
         }
     } else {
@@ -1271,18 +1289,24 @@ void HomePage::updateResponsiveLayout()
         return;
     }
     const bool vertical = width() < 760;
+    if (m_heroWordmark) {
+        const qreal dpr = qMax<qreal>(1.0, devicePixelRatioF());
+        const QPixmap wordmark = voxel::renderWordmark(vertical ? 3 : 4, dpr);
+        m_heroWordmark->setPixmap(wordmark);
+        m_heroWordmark->setFixedSize(wordmark.deviceIndependentSize().toSize());
+    }
     if (vertical) {
         m_columns->setDirection(QBoxLayout::TopToBottom);
         m_columns->setSpacing(12);
         m_right->setMaximumWidth(QWIDGETSIZE_MAX);
-        m_heroFrame->setMinimumHeight(m_decorationsVisible ? 112 : 76);
-        m_heroFrame->setMaximumHeight(m_decorationsVisible ? 124 : 88);
+        m_heroFrame->setMinimumHeight(m_decorationsVisible ? 124 : 92);
+        m_heroFrame->setMaximumHeight(m_decorationsVisible ? 136 : 104);
     } else {
         m_columns->setDirection(QBoxLayout::LeftToRight);
         m_columns->setSpacing(14);
         m_right->setMaximumWidth(290);
-        m_heroFrame->setMinimumHeight(m_decorationsVisible ? 138 : 82);
-        m_heroFrame->setMaximumHeight(m_decorationsVisible ? 156 : 96);
+        m_heroFrame->setMinimumHeight(m_decorationsVisible ? 156 : 104);
+        m_heroFrame->setMaximumHeight(m_decorationsVisible ? 172 : 116);
     }
 }
 

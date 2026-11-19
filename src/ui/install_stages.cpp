@@ -7,7 +7,7 @@ const std::array<InstallStageDefinition, 6>& installStageDefinitions()
     static const std::array<InstallStageDefinition, 6> stages = {{
         {QStringLiteral("未安装"), QStringLiteral("目标目录为空")},
         {QStringLiteral("解析版本"), QStringLiteral("文件清单已确认")},
-        {QStringLiteral("准备环境"), QStringLiteral("Java 运行时已就绪")},
+        {QStringLiteral("准备环境"), QStringLiteral("Java 环境已就绪")},
         {QStringLiteral("下载文件"), QStringLiteral("正在下载游戏资源")},
         {QStringLiteral("校验文件"), QStringLiteral("下载完成后自动开始")},
         {QStringLiteral("就绪"), QStringLiteral("完成后可启动游戏")},

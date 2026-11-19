@@ -69,8 +69,8 @@ MainWindow::MainWindow(application::FrontendGateway* gateway, Mode mode, QWidget
     m_titleBar = new ui::PixelTitleBar(m_root);
     m_titleBar->setTitleText(
         title,
-        m_mode == Mode::Real ? QStringLiteral("华中科技大学 Minecraft 启动器")
-                             : QStringLiteral("华中科技大学 · 界面演示"));
+        m_mode == Mode::Real ? QStringLiteral("HUSTer的启动器")
+                             : QStringLiteral("HUSTer的启动器 · 界面演示"));
     outerLayout->addWidget(m_titleBar, 0);
 
     auto* body = new QWidget(m_root);
@@ -247,7 +247,7 @@ MainWindow::MainWindow(application::FrontendGateway* gateway, Mode mode, QWidget
         }
         if (m_homeSnapshot.sessionActive) {
             m_settings->setSaveResult(
-                false, QStringLiteral("游戏运行中不能修改离线身份，请先退出游戏。"));
+                false, QStringLiteral("游戏运行中不能修改离线玩家名，请先退出游戏。"));
             m_settings->setMemorySaveResult(
                 false, QStringLiteral("游戏运行中不能修改内存上限，请先退出游戏。"));
             return;
@@ -256,12 +256,12 @@ MainWindow::MainWindow(application::FrontendGateway* gateway, Mode mode, QWidget
         if (nameAccepted) {
             m_settings->setSaveResult(
                 true,
-                QStringLiteral("离线名已应用，下次启动游戏时生效。"));
+                QStringLiteral("离线玩家名已保存，下次启动游戏时生效。"));
         } else {
             m_settings->setSaveResult(
                 false,
-                QStringLiteral("离线名无效：仅支持 1–16 位英文字母、数字或下划线，"
-                               "不能使用中文或空格。若格式正确，请检查数据目录写入权限。"));
+                QStringLiteral("玩家名无效：仅支持 1–16 位英文字母、数字或下划线，"
+                               "不能包含中文或空格。若格式正确，请检查数据目录写入权限。"));
         }
         const bool memAccepted = m_gateway->setMemoryMb(memoryMb);
         if (memAccepted) {

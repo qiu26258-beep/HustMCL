@@ -179,7 +179,7 @@ void LogsPage::setSnapshot(const application::HomeSnapshot& home,
         : home.account.displayName;
     m_identity->setText(
         QStringLiteral("%1：%2 · %3")
-            .arg(home.offlineMode ? QStringLiteral("离线身份") : QStringLiteral("账号"),
+            .arg(home.offlineMode ? QStringLiteral("离线玩家") : QStringLiteral("账号"),
                  name, copy::accountStateText(home.account.state)));
 
     const bool hasError = task.error.has_value();

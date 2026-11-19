@@ -5,6 +5,7 @@
 #include <QColor>
 #include <QPainter>
 #include <QPixmapCache>
+#include <QVector>
 
 namespace hustmcl::ui::voxel {
 
@@ -286,6 +287,197 @@ QPixmap renderIcon(IconKind kind, int logicalSize, qreal devicePixelRatio)
 QIcon icon(IconKind kind, int logicalSize, qreal devicePixelRatio)
 {
     return QIcon(renderIcon(kind, logicalSize, devicePixelRatio));
+}
+
+QPixmap renderWordmark(int pixelScale, qreal devicePixelRatio)
+{
+    const int scale = qBound(1, pixelScale, 8);
+    const qreal dpr = qMax<qreal>(1.0, devicePixelRatio);
+    const QString key = QStringLiteral("hustmcl/voxel_wordmark/%1/%2")
+                            .arg(scale)
+                            .arg(qRound(dpr * 100.0));
+    QPixmap cached;
+    if (QPixmapCache::find(key, &cached)) {
+        return cached;
+    }
+
+    struct Glyph {
+        int width;
+        bool emerald;
+        const char* rows[7];
+    };
+
+    // Custom 7-row hardcore pixel bitmap glyphs for "HustMCL"
+    static constexpr Glyph kGlyphs[] = {
+        // H (5x7)
+        {5, false, {
+            "#...#",
+            "#...#",
+            "#...#",
+            "#####",
+            "#...#",
+            "#...#",
+            "#...#",
+        }},
+        // u (4x7)
+        {4, false, {
+            "....",
+            "....",
+            "#..#",
+            "#..#",
+            "#..#",
+            "#..#",
+            "####",
+        }},
+        // s (4x7)
+        {4, false, {
+            "....",
+            "....",
+            ".###",
+            "#...",
+            ".##.",
+            "...#",
+            "###.",
+        }},
+        // t (4x7)
+        {4, false, {
+            ".#..",
+            ".#..",
+            "####",
+            ".#..",
+            ".#..",
+            ".#..",
+            "..##",
+        }},
+        // M (5x7)
+        {5, true, {
+            "#...#",
+            "##.##",
+            "#.#.#",
+            "#...#",
+            "#...#",
+            "#...#",
+            "#...#",
+        }},
+        // C (5x7)
+        {5, true, {
+            ".####",
+            "#....",
+            "#....",
+            "#....",
+            "#....",
+            "#....",
+            ".####",
+        }},
+        // L (4x7)
+        {4, true, {
+            "#...",
+            "#...",
+            "#...",
+            "#...",
+            "#...",
+            "#...",
+            "####",
+        }},
+    };
+
+    // Grid dimensions: 1px border on left/right/top + 2px 3D drop extrusion + 1px bottom outline
+    int totalCols = 0;
+    for (int i = 0; i < 7; ++i) {
+        totalCols += kGlyphs[i].width;
+        if (i < 6) {
+            totalCols += (i == 3) ? 2 : 1; // subtle kerning gap between "Hust" and "MCL"
+        }
+    }
+    const int gridW = totalCols + 2;
+    const int gridH = 7 + 4; // 1 top outline + 7 glyph rows + 2 extrusion + 1 bottom outline
+
+    const int unitPx = qMax(1, qRound(scale * dpr));
+    QPixmap pixmap(gridW * unitPx, gridH * unitPx);
+    pixmap.fill(Qt::transparent);
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing, false);
+
+    auto drawCell = [&](int gx, int gy, const QColor& c) {
+        painter.fillRect(gx * unitPx, gy * unitPx, unitPx, unitPx, c);
+    };
+
+    // Collect filled pixels so outline, extrusion, and face render in clean z-order.
+    struct Cell {
+        int x;
+        int y;
+        bool emerald;
+        bool isTop;
+        bool isBottom;
+    };
+    QVector<Cell> cells;
+    cells.reserve(160);
+
+    int cursorX = 1;
+    for (int i = 0; i < 7; ++i) {
+        const Glyph& g = kGlyphs[i];
+        for (int r = 0; r < 7; ++r) {
+            for (int c = 0; c < g.width; ++c) {
+                if (g.rows[r][c] == '#') {
+                    const bool topExposed = (r == 0) || (g.rows[r - 1][c] != '#');
+                    const bool bottomExposed = (r == 6) || (g.rows[r + 1][c] != '#');
+                    cells.push_back({cursorX + c, 1 + r, g.emerald, topExposed, bottomExposed});
+                }
+            }
+        }
+        cursorX += g.width + ((i == 3) ? 2 : 1);
+    }
+
+    const QColor outline(QStringLiteral("#08100C"));
+    const QColor ivoryDepth(QStringLiteral("#5C5649"));
+    const QColor ivoryDepthDark(QStringLiteral("#3A372F"));
+    const QColor emeraldDepth(QStringLiteral("#145929"));
+    const QColor emeraldDepthDark(QStringLiteral("#0B3819"));
+
+    // Pass 1: Obsidian pixel outline around face and 3D extrusion
+    for (const Cell& cell : cells) {
+        for (int dy = -1; dy <= 3; ++dy) {
+            for (int dx = -1; dx <= 1; ++dx) {
+                if (dx == 0 && (dy == 0 || dy == 1 || dy == 2)) {
+                    continue;
+                }
+                const int ox = cell.x + dx;
+                const int oy = cell.y + dy;
+                if (ox >= 0 && ox < gridW && oy >= 0 && oy < gridH) {
+                    drawCell(ox, oy, outline);
+                }
+            }
+        }
+    }
+
+    // Pass 2: 2-voxel Minecraft 3D block bottom extrusion
+    for (const Cell& cell : cells) {
+        drawCell(cell.x, cell.y + 2, cell.emerald ? emeraldDepthDark : ivoryDepthDark);
+        drawCell(cell.x, cell.y + 1, cell.emerald ? emeraldDepth : ivoryDepth);
+    }
+
+    // Pass 3: Front voxel face with top specular glint and lower shade
+    const QColor ivoryHi(QStringLiteral("#FFFFFF"));
+    const QColor ivoryMid(QStringLiteral("#F4EFE2"));
+    const QColor ivoryLo(QStringLiteral("#D8CFBC"));
+    const QColor emeraldHi(QStringLiteral("#92FF8A"));
+    const QColor emeraldMid(QStringLiteral("#3FD166"));
+    const QColor emeraldLo(QStringLiteral("#249E48"));
+
+    for (const Cell& cell : cells) {
+        QColor face;
+        if (cell.emerald) {
+            face = cell.isTop ? emeraldHi : (cell.isBottom ? emeraldLo : emeraldMid);
+        } else {
+            face = cell.isTop ? ivoryHi : (cell.isBottom ? ivoryLo : ivoryMid);
+        }
+        drawCell(cell.x, cell.y, face);
+    }
+
+    pixmap.setDevicePixelRatio(dpr);
+    QPixmapCache::insert(key, pixmap);
+    return pixmap;
 }
 
 } // namespace hustmcl::ui::voxel

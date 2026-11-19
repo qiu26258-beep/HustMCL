@@ -755,7 +755,7 @@ void TestUi::unknownTotalHasNoPercentage()
     QCoreApplication::processEvents();
 
     const QString joined = joinedLabelText(page);
-    QVERIFY(joined.contains(QStringLiteral("总量未知")));
+    QVERIFY(joined.contains(QStringLiteral("大小未知")));
     QVERIFY(!joined.contains(QLatin1Char('%')));
     for (QProgressBar* bar : page.findChildren<QProgressBar*>()) {
         QVERIFY(!bar->isVisible());
@@ -846,7 +846,7 @@ void TestUi::progressWidgetSaturatesAndRejectsNonPositiveTotals()
         QCoreApplication::processEvents();
         QVERIFY(!visibleProgressBar(page));
         const QString unknownText = visibleLabelText(page);
-        QVERIFY(unknownText.contains(QStringLiteral("总量未知")));
+        QVERIFY(unknownText.contains(QStringLiteral("大小未知")));
         QVERIFY(!unknownText.contains(QLatin1Char('%')));
     }
 }
@@ -1135,7 +1135,7 @@ void TestUi::realModeUsesFivePagesAndOfflineIdentity()
     QVERIFY(nav);
     QCOMPARE(nav->count(), 5);
     QVERIFY(!(nav->item(1)->text().contains(QStringLiteral("安装游戏"))));
-    QVERIFY(nav->item(1)->text().contains(QStringLiteral("实例与检查")));
+    QVERIFY(nav->item(1)->text().contains(QStringLiteral("版本检查")));
     QVERIFY(nav->item(4)->text().contains(QStringLiteral("模组市场")));
     for (int row = 0; row < 4; ++row) {
         QVERIFY(nav->item(row)->flags() & Qt::ItemIsEnabled);
@@ -1145,11 +1145,11 @@ void TestUi::realModeUsesFivePagesAndOfflineIdentity()
 
     auto* badge = window.findChild<QLabel*>(QStringLiteral("DemoBadge"));
     QVERIFY(badge);
-    QCOMPARE(badge->text(), QStringLiteral("本地离线体验"));
+    QCOMPARE(badge->text(), QStringLiteral("离线模式"));
     auto* accountState = window.findChild<QLabel*>(QStringLiteral("AccountState"));
     QVERIFY(accountState);
     QCOMPARE(accountState->text(), QStringLiteral("本地离线"));
-    QVERIFY(joinedLabelText(window).contains(QStringLiteral("离线身份仅用于本地游戏，不是正版登录。")));
+    QVERIFY(joinedLabelText(window).contains(QStringLiteral("离线模式仅用于单机游玩，不是正版登录。")));
     QVERIFY(!joinedLabelText(window).contains(QStringLiteral("已登录正版")));
 
     auto* homeBar = window.homePage()->findChild<hustmcl::ui::PrimaryActionBar*>();
@@ -1437,7 +1437,7 @@ void TestUi::offlineSettingsStayEditable()
         QStringLiteral("FieldSuccess"));
     QVERIFY(success);
     QVERIFY(success->isVisible());
-    QVERIFY(success->text().contains(QStringLiteral("离线名已应用")));
+    QVERIFY(success->text().contains(QStringLiteral("离线玩家名已保存")));
     QVERIFY(!success->text().contains(QStringLiteral("重开")));
     QVERIFY(!success->text().contains(QStringLiteral("重新打开")));
 }
@@ -1655,7 +1655,7 @@ void TestUi::realSettingsDelegatesValidationToController()
     auto* success = window.settingsPage()->findChild<QLabel*>(QStringLiteral("FieldSuccess"));
     QVERIFY(success);
     QVERIFY(success->isVisible());
-    QVERIFY(success->text().contains(QStringLiteral("离线名已应用")));
+    QVERIFY(success->text().contains(QStringLiteral("离线玩家名已保存")));
     QVERIFY(!success->text().contains(QStringLiteral("重新打开启动器后需要重新设置")));
 
     auto* error = window.settingsPage()->findChild<QLabel*>(QStringLiteral("FieldError"));
@@ -1664,7 +1664,7 @@ void TestUi::realSettingsDelegatesValidationToController()
     bar->primaryButton()->click();
     QCoreApplication::processEvents();
     QVERIFY(error->isVisible());
-    QVERIFY(error->text().contains(QStringLiteral("离线名无效")));
+    QVERIFY(error->text().contains(QStringLiteral("玩家名无效")));
     QCOMPARE(controller.homeSnapshot().account.displayName, QStringLiteral("Campus_Player"));
 
     auto* themeSelector = window.settingsPage()->findChild<QComboBox*>(QStringLiteral("ThemeModeSelector"));
@@ -1680,7 +1680,7 @@ void TestUi::realSettingsDelegatesValidationToController()
     QVERIFY(!settingsText.contains(QStringLiteral("当前固定")));
     QVERIFY(settingsText.contains(QStringLiteral("26.2")));
     QVERIFY(settingsText.contains(QStringLiteral("D:\\HustMCL\\data")));
-    QVERIFY(settingsText.contains(QStringLiteral("离线身份")));
+    QVERIFY(settingsText.contains(QStringLiteral("离线玩家")));
     QVERIFY(!settingsText.contains(QStringLiteral("重开需重新设置")));
 }
 
@@ -2065,7 +2065,7 @@ void TestUi::marketPageSearchesPaginatesAndDownloads()
 
     versions->setCurrentRow(0);
     QCoreApplication::processEvents();
-    QVERIFY(dependency->text().contains(QStringLiteral("必需前置")));
+    QVERIFY(dependency->text().contains(QStringLiteral("前置模组")));
     QVERIFY(dependency->text().contains(QStringLiteral("fabr0001")));
     QCOMPARE(bar->primaryButton()->text(), QStringLiteral("下载文件"));
     QVERIFY(bar->primaryButton()->isEnabled());
@@ -2279,8 +2279,8 @@ void TestUi::homeImportShowsPhasesProgressAndCommitLock()
     workspace.installProgress({3, 10, 500, 0});
     QCoreApplication::processEvents();
     QVERIFY(progressText->text().contains(QStringLiteral("文件 3 / 10")));
-    QVERIFY(progressText->text().contains(QStringLiteral("已传输 500 B")));
-    QVERIFY(progressText->text().contains(QStringLiteral("总量未知")));
+    QVERIFY(progressText->text().contains(QStringLiteral("已下载 500 B")));
+    QVERIFY(progressText->text().contains(QStringLiteral("大小未知")));
     QVERIFY(!progressText->text().contains(QLatin1Char('%')));
     QCOMPARE(progress->value(), 300);
 
@@ -2310,7 +2310,7 @@ void TestUi::homeImportShowsPhasesProgressAndCommitLock()
     auto* retry = buttonWithText(*window.homePage(), QStringLiteral("重试导入"));
     QVERIFY(retry);
     QVERIFY(!retry->isVisible());
-    QVERIFY(joinedLabelText(*window.homePage()).contains(QStringLiteral("可选客户端内容")));
+    QVERIFY(joinedLabelText(*window.homePage()).contains(QStringLiteral("可选模组")));
     QCOMPARE(gateway.primaryRequests, 0);
     QCOMPARE(bar->primaryButton()->text(), QStringLiteral("启动游戏"));
 }
@@ -2959,6 +2959,17 @@ void TestUi::releaseArtworkMatchesBuildMode()
     QVERIFY(windowArtwork->height() >= 100);
     QVERIFY(window.titleBar());
     QVERIFY(window.titleBar()->isVisible());
+    auto* heroWordmark = window.homePage()->findChild<QLabel*>(QStringLiteral("HeroWordmark"));
+    QVERIFY(heroWordmark);
+    QVERIFY(!heroWordmark->pixmap().isNull());
+    auto* brandWordmark = window.sidebar()->findChild<QLabel*>(QStringLiteral("BrandName"));
+    QVERIFY(brandWordmark);
+    QVERIFY(!brandWordmark->pixmap().isNull());
+    auto* titleWordmark = window.titleBar()->findChild<QLabel*>(QStringLiteral("TitleBarText"));
+    QVERIFY(titleWordmark);
+    QVERIFY(!titleWordmark->pixmap().isNull());
+    QVERIFY(joinedLabelText(*window.sidebar()).contains(QStringLiteral("HUSTer的启动器")));
+    QVERIFY(joinedLabelText(*window.titleBar()).contains(QStringLiteral("HUSTer的启动器")));
 
     // Verify dual-theme auto-time resolution (06:00-17:59 Light, 18:00-05:59 Dark)
     using hustmcl::ui::theme::ResolvedTheme;
@@ -2995,7 +3006,7 @@ void TestUi::emptyModpackInstanceListIsExplained()
     auto* combo = page.findChild<QComboBox*>(QStringLiteral("ModpackInstanceCombo"));
     QVERIFY(combo);
     QCOMPARE(combo->count(), 1);
-    QCOMPARE(combo->itemText(0), QStringLiteral("暂无可用实例"));
+    QCOMPARE(combo->itemText(0), QStringLiteral("暂无已安装版本"));
     QVERIFY(!combo->isEnabled());
 
     application::HomeSnapshot home;
@@ -3015,7 +3026,7 @@ void TestUi::emptyModpackInstanceListIsExplained()
     page.setSnapshot(home);
 
     const QString text = joinedLabelText(page);
-    QVERIFY(text.contains(QStringLiteral("尚未安装实例")));
+    QVERIFY(text.contains(QStringLiteral("尚未安装游戏")));
     QVERIFY(text.contains(QStringLiteral("请先导入整合包")));
     auto* bar = page.findChild<hustmcl::ui::PrimaryActionBar*>();
     QVERIFY(bar);

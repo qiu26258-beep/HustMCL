@@ -26,10 +26,12 @@ PixelTitleBar::PixelTitleBar(QWidget* parent)
     m_icon->setFixedSize(20, 20);
     m_icon->setAlignment(Qt::AlignCenter);
 
-    m_title = new QLabel(QStringLiteral("HustMCL"), this);
+    m_title = new QLabel(this);
     m_title->setObjectName(QStringLiteral("TitleBarText"));
+    m_title->setAccessibleName(QStringLiteral("HustMCL"));
+    m_title->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
-    m_subtitle = new QLabel(QStringLiteral("华中科技大学 Minecraft 启动器"), this);
+    m_subtitle = new QLabel(QStringLiteral("HUSTer的启动器"), this);
     m_subtitle->setObjectName(QStringLiteral("TitleBarSub"));
 
     m_coord = new QLabel(QStringLiteral("X: 114.41°E  Z: 30.51°N · 喻家山"), this);
@@ -89,7 +91,8 @@ PixelTitleBar::PixelTitleBar(QWidget* parent)
 
 void PixelTitleBar::setTitleText(const QString& title, const QString& subtitle)
 {
-    m_title->setText(title);
+    m_title->setAccessibleName(title.isEmpty() ? QStringLiteral("HustMCL") : title);
+    m_title->setToolTip(title);
     m_subtitle->setText(subtitle);
     m_subtitle->setVisible(!subtitle.isEmpty());
 }
@@ -130,6 +133,11 @@ void PixelTitleBar::refreshIcons()
 {
     const qreal dpr = qMax<qreal>(1.0, devicePixelRatioF());
     m_icon->setPixmap(voxel::renderIcon(voxel::IconKind::SouthGateEmblem, 20, dpr));
+    if (m_title) {
+        const QPixmap wordmark = voxel::renderWordmark(2, dpr);
+        m_title->setPixmap(wordmark);
+        m_title->setFixedSize(wordmark.deviceIndependentSize().toSize());
+    }
 
     voxel::IconKind themeIcon = voxel::IconKind::ThemeAuto;
     if (m_themeMode == theme::ThemeMode::Dark) {
