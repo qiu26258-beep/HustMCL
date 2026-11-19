@@ -222,6 +222,7 @@ void Sidebar::refreshTheme()
         m_artwork->syncSkyPhaseToTime();
         m_artwork->update();
     }
+    updateArtworkVisibility();
     update();
 }
 
@@ -262,6 +263,7 @@ void Sidebar::setRealMode(bool realMode)
         m_accountNote->setText(QStringLiteral("演示窗口不会执行账号、下载或启动操作"));
         m_footer->setText(QStringLiteral("HustMCL 0.1 · 界面演示"));
         updateAccountLink();
+        updateArtworkVisibility();
     }
 }
 
@@ -317,6 +319,7 @@ void Sidebar::updateAccountPresentation()
     m_accountState->style()->polish(m_accountState);
     applyModeCopy();
     updateAccountLink();
+    updateArtworkVisibility();
 }
 
 void Sidebar::applyModeCopy()
@@ -387,6 +390,9 @@ void Sidebar::setCompact(bool compact)
         return;
     }
     m_compact = compact;
+    const int verticalMargin = compact ? 8 : 12;
+    layout()->setContentsMargins(12, verticalMargin, 12, verticalMargin);
+    layout()->setSpacing(compact ? 6 : 8);
     const int itemHeight = compact ? 38 : 47;
     for (int row = 0; row < m_nav->count(); ++row) {
         m_nav->item(row)->setSizeHint(QSize(0, itemHeight));
@@ -399,10 +405,27 @@ void Sidebar::setCompact(bool compact)
     updateArtworkVisibility();
 }
 
+void Sidebar::resizeEvent(QResizeEvent* event)
+{
+    QWidget::resizeEvent(event);
+    updateArtworkVisibility();
+}
+
 void Sidebar::updateArtworkVisibility()
 {
-    const bool visible = m_artworkRequested && !m_compact;
-    m_artwork->setVisible(visible);
+    if (!m_artworkRequested || m_compact) {
+        m_artwork->hide();
+        return;
+    }
+
+    const auto* column = layout();
+    const int wrappedHeight = column->minimumHeightForWidth(width());
+    int requiredHeight = qMax(column->minimumSize().height(), wrappedHeight);
+    if (m_artwork->isHidden()) {
+        // Hidden widgets are omitted from the layout's height and spacing.
+        requiredHeight += m_artwork->minimumHeight() + column->spacing();
+    }
+    m_artwork->setVisible(height() >= requiredHeight);
 }
 
 } // namespace hustmcl::ui

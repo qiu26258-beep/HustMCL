@@ -25,6 +25,7 @@
 #include <QDropEvent>
 #include <QFile>
 #include <QLabel>
+#include <QLayout>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMessageBox>
@@ -629,6 +630,7 @@ private slots:
     void staleCancellationDoesNotReplaceNewTask();
     void longPathElidesAndRepeatedRenderKeepsWidgetCount();
     void noDecorationHidesArtwork();
+    void installDemoSidebarFitsWhenResized();
     void settingsAndLogsAreDisabled();
     void realModeUsesFivePagesAndOfflineIdentity();
     void realPrimaryLabelAndStatusTitleOverride();
@@ -1048,6 +1050,50 @@ void TestUi::noDecorationHidesArtwork()
         window.resize(size);
         QCoreApplication::processEvents();
         QVERIFY(homeArtwork->isHidden());
+    }
+}
+
+void TestUi::installDemoSidebarFitsWhenResized()
+{
+    using MainWindow = hustmcl::app::MainWindow;
+    hustmcl::app::DemoController controller;
+    MainWindow window(&controller, MainWindow::Mode::Demo);
+    window.setCurrentPage(MainWindow::Page::Install);
+    window.show();
+
+    auto* sidebar = window.sidebar();
+    const auto* layout = sidebar->layout();
+    auto* artwork = sidebar->findChild<QWidget*>(QStringLiteral("CampusArtwork"));
+    auto* note = sidebar->findChild<QLabel*>(QStringLiteral("NavNote"));
+    QVERIFY(artwork);
+    QVERIFY(note);
+
+    for (const QSize size : {QSize(1120, 720), QSize(1000, 680), QSize(840, 460),
+                             QSize(1120, 850), QSize(1120, 720)}) {
+        window.resize(size);
+        const auto layoutProblem = [&]() -> QString {
+            int previousBottom = -1;
+            for (int index = 0; index < layout->count(); ++index) {
+                const auto* widget = layout->itemAt(index)->widget();
+                if (!widget || !widget->isVisible()) {
+                    continue;
+                }
+                const QRect bounds = widget->geometry();
+                if (!sidebar->rect().contains(bounds) || bounds.top() <= previousBottom) {
+                    return QStringLiteral("%1 at %2x%3 occupies y=%4–%5 after y=%6 (sidebar height %7)")
+                        .arg(widget->objectName()).arg(size.width()).arg(size.height())
+                        .arg(bounds.top()).arg(bounds.bottom()).arg(previousBottom).arg(sidebar->height());
+                }
+                previousBottom = bounds.bottom();
+            }
+            return {};
+        };
+        QTRY_COMPARE(window.size(), size);
+        QTRY_COMPARE(note->isVisible(), size.height() >= 680);
+        if (size.height() != 720) {
+            QTRY_COMPARE(artwork->isVisible(), size.height() == 850);
+        }
+        QTRY_VERIFY2(layoutProblem().isEmpty(), qPrintable(layoutProblem()));
     }
 }
 

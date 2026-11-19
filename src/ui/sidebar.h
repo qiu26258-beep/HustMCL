@@ -33,6 +33,9 @@ signals:
     void accountSettingsRequested();
     void unimplementedFeatureRequested(const QString& feature);
 
+protected:
+    void resizeEvent(QResizeEvent* event) override;
+
 private:
     void updateArtworkVisibility();
     void updateAccountLink();

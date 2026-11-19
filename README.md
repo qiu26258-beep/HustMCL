@@ -4,7 +4,7 @@
 
 ![HustMCL 像素版首页，横幅为东九教学楼和南大门](docs/images/home.png)
 
-## Preview 6 安装与使用
+## Preview 7 安装与使用
 
 1. 解压分享包，运行 `HustMCL-Setup-Windows-x64.exe`，选择你希望保存启动器与游戏的目录。安装完成后打开 **HustMCL Accounts**。安装器未签名，可用包内的 `SHA256SUMS.txt` 核对下载完整性。
 2. 在设置里选择登录方式。微软账号需要拥有 Minecraft Java 版，并在浏览器完成授权。本地离线玩家用于单机游戏。微软登录的续期凭据由 Windows 在当前用户下加密保存在本地，可在设置中退出登录。
